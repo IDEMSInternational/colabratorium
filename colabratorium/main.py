@@ -6,12 +6,13 @@ from pydbml import PyDBML
 
 from form_gen import generate_form_layout, register_callbacks
 from visual_customization import stylesheet, title
-from db import build_elements_from_db
+from db import build_elements_from_db, init_db
 
 
 with open("schema.dbml") as f:
     dbml = PyDBML(f)
 
+init_db()
 
 app = Dash(title, title=title, external_stylesheets=[dbc.themes.BOOTSTRAP],)
 
@@ -215,4 +216,21 @@ def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+
+    in_docker = os.getcwd() == "/app"
+
+    # Default to 0.0.0.0 when in Docker so the container port is reachable from host.
+    default_host = "0.0.0.0" if in_docker else "127.0.0.1"
+
+    host = os.environ.get("HOST", default_host)
+    port = int(os.environ.get("PORT", "8050"))
+    debug_env = os.environ.get("DEBUG", None)
+    if debug_env is None:
+        # Default debug to True only for local development
+        debug = not in_docker
+    else:
+        debug = debug_env.lower() in ("1", "true", "yes", "on")
+
+    print(f"Starting server on {host}:{port} (in_docker={in_docker}, debug={debug})")
+    app.run(host=host, port=port, debug=debug)

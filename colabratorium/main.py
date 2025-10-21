@@ -305,7 +305,7 @@ def show_add_form(table_name):
     if not table_name:
         return "Select a table"
     table = next(t for t in dbml.tables if t.name == table_name)
-    return generate_form_layout(table, dbml=dbml)
+    return login_required(generate_form_layout)(table, dbml=dbml)
 
 
 def show_node_form(tap_node):
@@ -318,7 +318,7 @@ def show_node_form(tap_node):
     if not table:
         return html.Div(f"Error: Table '{table_name}' not in DBML.")
     
-    return generate_form_layout(table, object_id=object_id, dbml=dbml)
+    return login_required(generate_form_layout)(table, object_id=object_id, dbml=dbml)
 
 
 def show_edge_form(tap_edge):
@@ -329,7 +329,7 @@ def show_edge_form(tap_edge):
     table = next((t for t in dbml.tables if t.name == table_name), None)
     if not table:
         return html.Div(f"Error: Table '{table_name}' not in DBML.")
-    return generate_form_layout(table, object_id=object_id, dbml=dbml)
+    return login_required(generate_form_layout)(table, object_id=object_id, dbml=dbml)
 
 
 @app.callback(Output('people-filter', 'options'), Input('intermediary-loaded', 'data'))
@@ -357,7 +357,7 @@ def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree
     include_deleted = bool(show_deleted and 'show' in show_deleted)
 
     # Build elements directly from the authoritative DB using the active filters
-    elements = build_elements_from_db(
+    elements = login_required(build_elements_from_db)(
         include_deleted=include_deleted,
         node_types=selected_types,
         people_selected=people_selected,

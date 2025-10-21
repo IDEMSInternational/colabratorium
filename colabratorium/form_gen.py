@@ -21,7 +21,7 @@ def get_dropdown_options(conn, table_name, dbml=None):
             label_col = "name"
 
     try:
-        cur.execute(f'SELECT id, "{label_col}" FROM "{table_name}" WHERE status != \'deleted\'')
+        cur.execute(f'SELECT id, "{label_col}" FROM "{table_name}" WHERE status != \'deleted\' ORDER BY version DESC')
         rows = cur.fetchall()
         return [{"label": str(r[1]), "value": r[0]} for r in rows]
     except Exception as e:

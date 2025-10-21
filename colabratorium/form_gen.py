@@ -292,7 +292,6 @@ def register_callbacks(app, dbml):
             
             data['timestamp'] = datetime.now().isoformat()
             data['created_by'] = person_id
-            print(person_id)
 
             cols_sql = ", ".join([f'"{k}"' for k in data.keys()])
             placeholders = ", ".join(["?"] * len(data))

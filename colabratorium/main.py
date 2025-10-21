@@ -28,13 +28,14 @@ init_db()
 # ---------------------------------------------------------
 # Flask + OAuth setup
 # ---------------------------------------------------------
+
+load_dotenv()
 server = Flask(__name__)
-server.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+server.secret_key = os.environ.get("SECRET_KEY")
 server.config["SESSION_TYPE"] = "filesystem"
 server.config["SESSION_PERMANENT"] = False
 Session(server)
 
-load_dotenv()
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 OAUTH_REDIRECT_URI = os.environ.get("OAUTH_REDIRECT_URI", "http://localhost:8050/auth/callback")
@@ -229,15 +230,70 @@ def populate_person_id(_):
     Input('cyto', 'tapEdgeData')
 )
 def load_form(table_name, tap_node, tap_edge):
-    trigger = ctx.triggered_id
-    if trigger == "table-selector" and table_name:
-        return login_required(show_add_form)(table_name)
-    if trigger == "cyto" and tap_edge:
-        return login_required(show_edge_form)(tap_edge)
-    if trigger == "cyto" and tap_node:
-        return login_required(show_node_form)(tap_node)
-    if table_name:
-        return login_required(show_add_form)(table_name)
+    """
+    Display either:
+      - add form (when table-selector triggered),
+      - node form (when cyto tapNode triggered),
+      - edge form (when cyto tapEdge triggered).
+
+    Uses ctx.triggered to prefer the *actual* trigger rather than just presence of table_name.
+    """
+    # determine which input actually triggered this callback
+    trigger = None
+    if ctx.triggered:
+        # ctx.triggered is a list like [{'prop_id': 'table-selector.value', 'value': ...}]
+        trigger = ctx.triggered[0].get('prop_id', '')
+
+    # If the table selector is the trigger, show the add form (explicit user choice)
+    if trigger and trigger.startswith("table-selector"):
+        if table_name:
+            return show_add_form(table_name)
+        return "Select a table"
+
+    # If cyto's tapEdgeData triggered, prefer edge form
+    if trigger and "cyto.tapEdgeData" in trigger:
+        if tap_edge:
+            # pick edge if it has editable table info
+            return show_edge_form(tap_edge)
+
+    # If cyto's tapNodeData triggered, prefer node form
+    if trigger and "cyto.tapNodeData" in trigger:
+        if tap_node:
+            return show_node_form(tap_node)
+
+    # No explicit trigger (initial or programmatic call).
+    # Fall back to previous behavior but prefer node/edge when both present.
+    if table_name and not (tap_node or tap_edge):
+        return show_add_form(table_name)
+
+    # Helper to decide which of node/edge is the most recent when both are present
+    def _is_node_newer(n, e):
+        try:
+            nt = int(n.get('timeStamp')) if n and n.get('timeStamp') is not None else None
+        except Exception:
+            nt = None
+        try:
+            et = int(e.get('timeStamp')) if e and e.get('timeStamp') is not None else None
+        except Exception:
+            et = None
+        if nt is None and et is None:
+            return False
+        if nt is None:
+            return False
+        if et is None:
+            return True
+        return nt >= et
+
+    # If an edge exists and is newer than the node, show edge form
+    if tap_edge:
+        if not tap_node or _is_node_newer(tap_edge, tap_node):
+            return show_edge_form(tap_edge)
+
+    if tap_node:
+        if not tap_edge or _is_node_newer(tap_node, tap_edge):
+            return show_node_form(tap_node)
+
+    # If nothing else, show a helpful message
     return html.Div("Select a table or click a node/edge in the graph.")
 
 

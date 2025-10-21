@@ -4,3 +4,7 @@ dash-cytoscape>=0.3.0
 pandas>=2.0
 pydbml>=1.2.0
 networkx>=3.5
+python-dotenv>=1.1.1
+flask
+authlib
+flask-session

@@ -248,10 +248,11 @@ def register_callbacks(app, dbml):
             Input({"type": "submit", "table": table.name}, "n_clicks"),
             State({"type": "link-input", "table": ALL, "source_col": ALL, "target_col": ALL}, "id"),
             State({"type": "link-input", "table": ALL, "source_col": ALL, "target_col": ALL}, "value"),
+            State("current-person-id", "data"),
             *state_args,
             prevent_initial_call=True,
         )
-        def handle_submit(n_clicks, link_ids, link_values, *values, _table=table):
+        def handle_submit(n_clicks, link_ids, link_values, person_id, *values, _table=table):
             if n_clicks == 0:
                 return None, no_update
             
@@ -290,6 +291,8 @@ def register_callbacks(app, dbml):
                 out_msg = html.Span(f"✅ Edited {_table.name} record ID {data['id']}", style={"color": "green"})
             
             data['timestamp'] = datetime.now().isoformat()
+            data['created_by'] = person_id
+            print(person_id)
 
             cols_sql = ", ".join([f'"{k}"' for k in data.keys()])
             placeholders = ", ".join(["?"] * len(data))

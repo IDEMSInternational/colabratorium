@@ -1,0 +1,12 @@
+services:
+  colabratorium:
+    build: .
+    image: colabratorium:latest
+    ports:
+      - "8050:8050"
+    volumes:
+      # Bind-mount the host database file into the container so data persists
+      - ./database.db:/app/database.db
+      # Also mount schema so container and host share the same schema file
+      - ./schema.dbml:/app/schema.dbml:ro
+    restart: unless-stopped

@@ -1,0 +1,229 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table initiatives {
+  id integer
+  version integer
+  name string
+  description string
+  responsible_person integer
+  timestamp timestamp
+  tags json
+  status string
+  created_by integer
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table people {
+  id integer
+  version integer
+  name string
+  role string
+  email string
+  active boolean
+  timestamp timestamp
+  tags json
+  status string
+  created_by integer
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table organisations {
+  id integer
+  version integer
+  timestamp timestamp
+  name string
+  description string
+  location string
+  contact_person integer
+  tags json
+  status string
+  created_by integer
+  // permissions and security goes here eventually
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table activities {
+  id integer
+  version integer
+  timestamp timestamp
+  name string
+  // possibly some json fields
+  description string
+  location string
+  start_date timestamp
+  end_date timestamp
+  tags json
+  status string
+  created_by integer
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table contracts {
+  id integer
+  version integer
+  timestamp timestamp
+  name string
+  description string
+  organisation integer
+  organisation_person integer
+  responsible_person integer
+  start_date timestamp
+  end_date timestamp
+  tags json
+  status string
+  created_by integer
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table activity_activity_links {
+  id integer
+  version integer
+  timestamp timestamp
+  status string
+  parent_id integer
+  child_id integer
+  type string
+  created_by integer
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table initiative_initiative_links {
+  id integer
+  version integer
+  timestamp timestamp
+  status string
+  parent_id integer
+  child_id integer
+  type string
+  created_by integer
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table activity_initiative_links {
+  id integer
+  version integer
+  timestamp timestamp
+  status string
+  activity_id integer
+  initiative_id integer
+  type string
+  created_by integer
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table activity_contract_links {
+  id integer
+  version integer
+  timestamp timestamp
+  status string
+  activity_id integer
+  contract_id integer
+  type string
+  created_by integer
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table contract_initiative_links {
+  id integer
+  version integer
+  timestamp timestamp
+  status string
+  contract_id integer
+  initiative_id integer
+  type string
+  created_by integer
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table organisation_people_links {
+  id integer
+  version integer
+  timestamp timestamp
+  status string
+  organisation_id integer
+  person_id integer
+  type string
+  created_by integer
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table activity_people_links {
+  id integer
+  version integer
+  timestamp timestamp
+  status string
+  activity_id integer
+  person_id integer
+  type string
+  created_by integer
+  // add time-tracking here
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Table tags {
+  id integer
+  version integer
+  name string
+  key_values json
+  initiatives string // e.g. false, 'required', 
+  people string
+  organisations string
+  activities string
+  contracts string
+  timestamp timestamp
+  status string
+  created_by integer
+  indexes {
+    (id, version) [pk]
+  }
+}
+
+Ref: initiatives.responsible_person > people.id
+Ref: contracts.responsible_person > people.id
+Ref: contracts.organisation_person > people.id
+Ref: contracts.organisation > organisations.id
+Ref: organisations.contact_person > people.id
+Ref: initiatives.created_by > people.id
+Ref: contracts.created_by > people.id
+Ref: organisations.created_by > people.id
+Ref: activities.created_by > people.id
+Ref: activity_activity_links.parent_id > activities.id
+Ref: activity_activity_links.child_id > activities.id
+Ref: initiative_initiative_links.parent_id > initiatives.id
+Ref: initiative_initiative_links.child_id > initiatives.id
+Ref: activity_initiative_links.activity_id > activities.id
+Ref: activity_initiative_links.initiative_id > initiatives.id
+Ref: activity_contract_links.activity_id > activities.id
+Ref: activity_contract_links.contract_id > contracts.id
+Ref: contract_initiative_links.contract_id > contracts.id
+Ref: contract_initiative_links.initiative_id > initiatives.id
+Ref: organisation_people_links.organisation_id > organisations.id
+Ref: organisation_people_links.person_id > people.id
+Ref: activity_people_links.activity_id > activities.id
+Ref: activity_people_links.person_id > people.id
+

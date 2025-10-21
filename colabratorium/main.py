@@ -45,6 +45,12 @@ oauth.register(
     name="google",
     client_id=GOOGLE_CLIENT_ID,
     client_secret=GOOGLE_CLIENT_SECRET,
+    access_token_url="https://oauth2.googleapis.com/token",
+    access_token_params=None,
+    authorize_url="https://accounts.google.com/o/oauth2/auth",
+    authorize_params=None,
+    api_base_url="https://www.googleapis.com/oauth2/v1/",
+    userinfo_endpoint="https://openidconnect.googleapis.com/v1/userinfo",
     server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
     client_kwargs={"scope": "openid email profile"},
 )
@@ -84,9 +90,8 @@ def login():
 @server.route("/auth/callback")
 def auth_callback():
     token = oauth.google.authorize_access_token()
-    userinfo = oauth.google.parse_id_token(token)
+    userinfo = oauth.google.get("userinfo").json()
     session["user"] = {
-        "sub": userinfo.get("sub"),
         "email": userinfo.get("email"),
         "name": userinfo.get("name"),
         "picture": userinfo.get("picture"),
@@ -151,7 +156,6 @@ app.layout = dbc.Container([
     dbc.Row([
         dbc.Col(html.H2(title)),
         dbc.Col([
-            html.Hr(),
             html.Div(id="login-area")
         ])
     ]),
@@ -381,4 +385,4 @@ if __name__ == "__main__":
         debug = debug_env.lower() in ("1", "true", "yes", "on")
 
     print(f"Starting server on {host}:{port} (in_docker={in_docker}, debug={debug})")
-    app.run(host=host, port=port, debug=debug)
+    app.run(host=host, port=port, debug=debug, use_reloader=False)

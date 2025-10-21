@@ -91,6 +91,8 @@ def login():
 def auth_callback():
     token = oauth.google.authorize_access_token()
     userinfo = oauth.google.get("userinfo").json()
+    if not userinfo.get("email").endswith("@idems.international"):
+        return redirect("unauthorized")
     session["user"] = {
         "email": userinfo.get("email"),
         "name": userinfo.get("name"),

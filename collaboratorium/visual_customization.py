@@ -1,7 +1,7 @@
 from dash import dcc
 
 # Set title
-title = 'Colabratorium'
+title = 'Collaboratorium'
 
 # Define which tables should be treated as nodes in the graph
 NODE_TABLES = {

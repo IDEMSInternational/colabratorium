@@ -21,7 +21,29 @@ def get_dropdown_options(conn, table_name, dbml=None):
             label_col = "name"
 
     try:
-        cur.execute(f'SELECT id, "{label_col}" FROM "{table_name}" WHERE status != \'deleted\' ORDER BY version DESC')
+        sql_query = f'''
+        WITH RankedRows AS (
+            SELECT
+                "id",
+                "{label_col}",
+                "status",
+                -- 1. Rank all rows within each "id" group.
+                --    The highest version gets rank (rn) = 1.
+                ROW_NUMBER() OVER(PARTITION BY "id" ORDER BY "version" DESC) as rn
+            FROM "{table_name}"
+        )
+        -- 2. From the ranked list, select only the top-ranked row (rn = 1)
+        --    AND check its status.
+        SELECT
+            "id",
+            "{label_col}"
+        FROM RankedRows
+        WHERE
+            rn = 1 
+            AND "status" != 'deleted'
+        ORDER BY "id"
+        '''
+        cur.execute(sql_query)
         rows = cur.fetchall()
         return [{"label": str(r[1]), "value": r[0]} for r in rows]
     except Exception as e:
@@ -151,7 +173,26 @@ def _create_link_dropdown(fields_list, conn, dbml, link_table, source_col, targe
         options = [opt for opt in options if opt['value'] != object_id]
 
     cur = conn.cursor()
-    cur.execute(f'SELECT "{target_col}" FROM "{link_table}" WHERE "{source_col}" = ? AND status != \'deleted\'', (object_id,))
+    sql_query = f'''
+    WITH RankedRow AS (
+        -- 1. Find all rows for this ID and rank them
+        --    (highest version gets rn = 1)
+        SELECT
+            "{target_col}",
+            "status",
+            -- 1. Group rows by the link id
+            --    and rank them by version, newest = 1.
+            ROW_NUMBER() OVER(PARTITION BY id ORDER BY "version" DESC) as rn
+        FROM "{link_table}"
+        WHERE "{source_col}" = ?
+    )
+    -- 2. Select the top-ranked row (rn = 1)
+    --    only if its status is not 'deleted'
+    SELECT "{target_col}"
+    FROM RankedRow
+    WHERE rn = 1 AND "status" != 'deleted'
+    '''
+    cur.execute(sql_query, (object_id,))
     current_values = [row[0] for row in cur.fetchall()]
 
     label = label_prefix if label_prefix else f"Linked {target_table}"
@@ -299,7 +340,7 @@ def register_callbacks(app, dbml):
             cur.execute(f'INSERT INTO "{_table.name}" ({cols_sql}) VALUES ({placeholders})', vals)
 
             # Part 2: Handle the Link Table Updates
-            if not is_new_object and link_ids:
+            if link_ids:
                 for i, link_id_dict in enumerate(link_ids):
                     link_table = link_id_dict['table']
                     source_col = link_id_dict['source_col']
@@ -307,7 +348,27 @@ def register_callbacks(app, dbml):
                     
                     newly_selected_ids = set(link_values[i] if link_values[i] else [])
 
-                    cur.execute(f'SELECT id, "{target_col}" FROM "{link_table}" WHERE "{source_col}" = ? AND status != \'deleted\'', (object_id,))
+                    sql_query = f'''
+                    WITH RankedRow AS (
+                        -- 1. Find all rows for this ID and rank them
+                        --    (highest version gets rn = 1)
+                        SELECT
+                            id,
+                            "{target_col}",
+                            "status",
+                            -- 1. Group rows by the link id
+                            --    and rank them by version, newest = 1.
+                            ROW_NUMBER() OVER(PARTITION BY id ORDER BY "version" DESC) as rn
+                        FROM "{link_table}"
+                        WHERE "{source_col}" = ?
+                    )
+                    -- 2. Select the top-ranked row (rn = 1)
+                    --    only if its status is not 'deleted'
+                    SELECT id, "{target_col}"
+                    FROM RankedRow
+                    WHERE rn = 1 AND "status" != 'deleted'
+                    '''
+                    cur.execute(sql_query, (object_id,))
                     current_links = {row[1]: row[0] for row in cur.fetchall()}
                     currently_linked_ids = set(current_links.keys())
 
@@ -339,10 +400,8 @@ def register_callbacks(app, dbml):
                             'status': 'active',
                             source_col: object_id,
                             target_col: target_id,
-                            'created_by': 1
+                            'created_by': person_id
                         }
-                        if 'type' in [c.name for c in dbml.get_table(link_table).columns]:
-                            insert_data['type'] = 'linked'
 
                         l_cols_sql = ", ".join([f'"{k}"' for k in insert_data.keys()])
                         l_placeholders = ", ".join(["?"] * len(insert_data))

@@ -9,4 +9,5 @@ services:
       - ./database.db:/app/database.db
       # Also mount schema so container and host share the same schema file
       - ./schema.dbml:/app/schema.dbml:ro
+      - ./.env:/app/.env
     restart: unless-stopped

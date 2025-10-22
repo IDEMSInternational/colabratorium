@@ -281,7 +281,7 @@ def register_callbacks(app, dbml):
     """Register one submit callback per table in the DBML schema."""
     for table in dbml.tables:
         input_ids = [{"type": "input", "table": table.name, "column": col.name} for col in table.columns]
-        state_args = [State(i, "value") for i in input_ids]
+        state_args = [State(i, ("date" if "date" in i["column"] else "value")) for i in input_ids]
 
         @app.callback(
             Output({"type": "output", "table": table.name}, "children"),

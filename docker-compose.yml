@@ -10,4 +10,5 @@ services:
       - ./analytics.db:/app/analytics.db
       # Also mount schema so container and host share the same schema file
       - ./schema.dbml:/app/schema.dbml:ro
+      - ./.env:/app/.env
     restart: unless-stopped

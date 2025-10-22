@@ -15,3 +15,5 @@ For local testing, run `python ./colabratorium/main.py`
 
 ## Hosting
 For running in Docker, use the standard `docker compose build` then `docker compose up`
+
+For Auth, register the app in Google Cloud Console and set the redirect URI to `{site_url}/auth/callback`

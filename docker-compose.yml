@@ -1,4 +1,21 @@
 services:
+  proxy:
+    depends_on:
+      - collaboratorium
+    environment:
+      CERTBOT_EMAIL: ${CERTBOT_EMAIL:?}
+      DOMAIN: ${DOMAIN:?}
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx/user_conf.d
+      USE_LOCAL_CA: ${USE_LOCAL_CA}
+    image: jonasal/nginx-certbot:6.0.1-nginx1.29.1
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+    volumes:
+      - ./nginx:/etc/nginx/templates
+      - letsencrypt:/etc/letsencrypt
+
   collaboratorium:
     build: .
     image: collaboratorium:latest
@@ -12,3 +29,7 @@ services:
       - ./schema.dbml:/app/schema.dbml:ro
       - ./.env:/app/.env
     restart: unless-stopped
+
+volumes:
+  letsencrypt:
+    driver: local

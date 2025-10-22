@@ -7,7 +7,7 @@ from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
 from datetime import datetime
 
-from dash import Dash, html, dcc, Input, Output, ctx
+from dash import Dash, html, dcc, Input, Output, State, ctx
 import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
 from pydbml import PyDBML
@@ -15,6 +15,8 @@ from pydbml import PyDBML
 from form_gen import generate_form_layout, register_callbacks
 from visual_customization import stylesheet, title, NODE_TABLES
 from db import build_elements_from_db, init_db, db_connect
+from analytics import analytics_log
+from analytics import init_db as analytics_init_db
 
 
 # ---------------------------------------------------------
@@ -23,6 +25,7 @@ from db import build_elements_from_db, init_db, db_connect
 with open("schema.dbml") as f:
     dbml = PyDBML(f)
 init_db()
+analytics_init_db()
 
 
 # ---------------------------------------------------------
@@ -233,9 +236,10 @@ def populate_person_id(_):
     Output("form-container", "children"),
     Input("table-selector", "value"),
     Input('cyto', 'tapNodeData'),
-    Input('cyto', 'tapEdgeData')
+    Input('cyto', 'tapEdgeData'),
+    State("current-person-id", "data"),
 )
-def load_form(table_name, tap_node, tap_edge):
+def load_form(table_name, tap_node, tap_edge, person_id):
     """
     Display either:
       - add form (when table-selector triggered),
@@ -253,24 +257,24 @@ def load_form(table_name, tap_node, tap_edge):
     # If the table selector is the trigger, show the add form (explicit user choice)
     if trigger and trigger.startswith("table-selector"):
         if table_name:
-            return show_add_form(table_name)
+            return show_add_form(table_name, person_id)
         return "Select a table"
 
     # If cyto's tapEdgeData triggered, prefer edge form
     if trigger and "cyto.tapEdgeData" in trigger:
         if tap_edge:
             # pick edge if it has editable table info
-            return show_edge_form(tap_edge)
+            return show_edge_form(tap_edge, person_id)
 
     # If cyto's tapNodeData triggered, prefer node form
     if trigger and "cyto.tapNodeData" in trigger:
         if tap_node:
-            return show_node_form(tap_node)
+            return show_node_form(tap_node, person_id)
 
     # No explicit trigger (initial or programmatic call).
     # Fall back to previous behavior but prefer node/edge when both present.
     if table_name and not (tap_node or tap_edge):
-        return show_add_form(table_name)
+        return show_add_form(table_name, person_id)
 
     # Helper to decide which of node/edge is the most recent when both are present
     def _is_node_newer(n, e):
@@ -293,24 +297,24 @@ def load_form(table_name, tap_node, tap_edge):
     # If an edge exists and is newer than the node, show edge form
     if tap_edge:
         if not tap_node or _is_node_newer(tap_edge, tap_node):
-            return show_edge_form(tap_edge)
+            return show_edge_form(tap_edge, person_id)
 
     if tap_node:
         if not tap_edge or _is_node_newer(tap_node, tap_edge):
-            return show_node_form(tap_node)
+            return show_node_form(tap_node, person_id)
 
     # If nothing else, show a helpful message
     return html.Div("Select a table or click a node/edge in the graph.")
 
 
-def show_add_form(table_name):
+def show_add_form(table_name, person_id):
     if not table_name:
         return "Select a table"
     table = next(t for t in dbml.tables if t.name == table_name)
     return login_required(generate_form_layout)(table, dbml=dbml)
 
 
-def show_node_form(tap_node):
+def show_node_form(tap_node, person_id):
     try:
         table_name, id_str = tap_node['id'].split('-', 1)
         object_id = int(id_str)
@@ -320,12 +324,14 @@ def show_node_form(tap_node):
     if not table:
         return html.Div(f"Error: Table '{table_name}' not in DBML.")
     
+    analytics_log(person_id, table_name, object_id)
     return login_required(generate_form_layout)(table, object_id=object_id, dbml=dbml)
 
 
-def show_edge_form(tap_edge):
+def show_edge_form(tap_edge, person_id):
     table_name = tap_edge.get('table_name')
     object_id = tap_edge.get('object_id')
+    analytics_log(person_id, table_name, object_id)
     if not table_name or object_id is None:
         return html.P(f"This edge ({tap_edge.get('label')}) is not editable.")
     table = next((t for t in dbml.tables if t.name == table_name), None)

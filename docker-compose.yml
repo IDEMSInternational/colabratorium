@@ -1,7 +1,7 @@
 services:
-  colabratorium:
+  collaboratorium:
     build: .
-    image: colabratorium:latest
+    image: collaboratorium:latest
     ports:
       - "8050:8050"
     volumes:

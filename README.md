@@ -1,4 +1,4 @@
-# Colabratorium
+# Collaboratorium
 An environment for collaborative innovation
 
 ## Feedback Process
@@ -11,7 +11,7 @@ Please submit reports on how you use this tool and how it's helped you identify 
 Likewise, you will find templates for bug reports and feature requests.
 
 ## Development
-For local testing, run `python ./colabratorium/main.py`
+For local testing, run `python ./collaboratorium/main.py`
 
 ## Hosting
 For running in Docker, use the standard `docker compose build` then `docker compose up`

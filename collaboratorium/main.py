@@ -157,6 +157,7 @@ app.layout = dbc.Container([
     dcc.Store(id='selected-node', data=None),
     dcc.Store(id='intermediary-loaded', data=False),
     dcc.Store(id="current-person-id", data=None),
+    dcc.Store(id="form-refresh", data=False),
 
     dbc.Row([
         dbc.Col(html.H2(title)),
@@ -194,7 +195,8 @@ app.layout = dbc.Container([
                             id="table-selector",
                             options=[{"label": t.name, "value": t.name} for t in dbml.tables],
                         ),
-                        html.Div(id="form-container")
+                        html.Div(id="form-container"),
+                        html.Div(id="out_msg", children=[]),
                     ], style={"width": "100%", "float": "left"}),
 
                     html.Div(id="results", style={"marginLeft": "35%"}),
@@ -238,8 +240,9 @@ def populate_person_id(_):
     Input('cyto', 'tapNodeData'),
     Input('cyto', 'tapEdgeData'),
     State("current-person-id", "data"),
+    Input("form-refresh", "data"),
 )
-def load_form(table_name, tap_node, tap_edge, person_id):
+def load_form(table_name, tap_node, tap_edge, person_id, refresh_signal):
     """
     Display either:
       - add form (when table-selector triggered),
@@ -253,6 +256,9 @@ def load_form(table_name, tap_node, tap_edge, person_id):
     if ctx.triggered:
         # ctx.triggered is a list like [{'prop_id': 'table-selector.value', 'value': ...}]
         trigger = ctx.triggered[0].get('prop_id', '')
+    
+    if trigger == "form-refresh.data":
+        return html.Div("Select a table or click a node/edge in the graph.")
 
     # If the table selector is the trigger, show the add form (explicit user choice)
     if trigger and trigger.startswith("table-selector"):

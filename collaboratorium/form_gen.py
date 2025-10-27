@@ -1,4 +1,4 @@
-from dash import html, dcc, Input, Output, State, ctx, ALL, no_update
+from dash import html, dcc, Input, Output, State, ctx, ALL, no_update, MATCH
 from datetime import datetime
 from db import db_connect
 from visual_customization import dcl, NODE_TABLES
@@ -284,8 +284,9 @@ def register_callbacks(app, dbml):
         state_args = [State(i, ("date" if "date" in i["column"] else "value")) for i in input_ids]
 
         @app.callback(
-            Output({"type": "output", "table": table.name}, "children"),
+            Output("out_msg", "children", allow_duplicate=True),
             Output('intermediary-loaded', 'data', allow_duplicate=True),
+            Output("form-refresh", "data", allow_duplicate=True),
             Input({"type": "submit", "table": table.name}, "n_clicks"),
             State({"type": "link-input", "table": ALL, "source_col": ALL, "target_col": ALL}, "id"),
             State({"type": "link-input", "table": ALL, "source_col": ALL, "target_col": ALL}, "value"),
@@ -295,7 +296,7 @@ def register_callbacks(app, dbml):
         )
         def handle_submit(n_clicks, link_ids, link_values, person_id, *values, _table=table):
             if n_clicks == 0:
-                return None, no_update
+                return None, no_update, no_update
             
             conn = db_connect()
             cur = conn.cursor()
@@ -410,4 +411,4 @@ def register_callbacks(app, dbml):
             conn.commit()
             conn.close()
 
-            return out_msg, datetime.now().isoformat()
+            return out_msg, datetime.now().isoformat(), int(datetime.now().timestamp()*1000)

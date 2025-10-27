@@ -58,7 +58,7 @@ def get_latest_record(conn, table_name, object_id):
         cur.execute(
             f"""
             SELECT * FROM "{table_name}"
-            WHERE id = ? AND status != 'deleted'
+            WHERE id = ? AND (status != 'deleted' OR status IS null)
             ORDER BY version DESC
             LIMIT 1
             """,

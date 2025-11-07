@@ -1,6 +1,6 @@
 from dash import html, dcc, Input, Output, State, ctx, ALL, no_update, MATCH
 from datetime import datetime
-from db import db_connect
+from db import db_connect, get_latest_record
 from visual_customization import dcl, NODE_TABLES
 
 
@@ -49,29 +49,6 @@ def get_dropdown_options(conn, table_name, dbml=None):
     except Exception as e:
         print(f"[WARN] Error fetching options for {table_name}: {e}")
         return []
-
-
-def get_latest_record(conn, table_name, object_id):
-    """Return the most recent non-deleted record for the given id."""
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            f"""
-            SELECT * FROM "{table_name}"
-            WHERE id = ? AND (status != 'deleted' OR status IS null)
-            ORDER BY version DESC
-            LIMIT 1
-            """,
-            (object_id,),
-        )
-        row = cur.fetchone()
-        if not row:
-            return {}
-        cols = [d[0] for d in cur.description]
-        return dict(zip(cols, row))
-    except Exception as e:
-        print(f"Error fetching record for {table_name}: {e}")
-        return {}
 
 
 def _get_max_id_from_cursor(cur, table_name):
@@ -219,7 +196,7 @@ def generate_form_layout(table, object_id=None, dbml=None):
     """Generate a Dash form layout, including multi-select dropdowns for link tables."""
     fk_map = build_reference_index(dbml) if dbml else {}
     conn = db_connect()
-    existing_data = get_latest_record(conn, table.name, object_id) if (conn and object_id) else {}
+    existing_data = get_latest_record(table.name, object_id) if object_id else {}
 
     fields = []
     for col in table.columns:

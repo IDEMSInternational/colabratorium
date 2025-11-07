@@ -131,6 +131,63 @@ def init_db():
     
     conn.close()
 
+# ----------------------------------------------------------------------
+# RECORD RETRIEVAL
+# ----------------------------------------------------------------------
+
+def get_latest_record(table_name, object_id=None):
+    """
+    Get the latest (non-deleted) record from a versioned table.
+    If object_id is provided, return the most recent version of that record.
+    Otherwise return the latest record overall.
+    """
+    conn = db_connect()
+    cur = conn.cursor()
+
+    if object_id:
+        cur.execute(
+            f"""
+            SELECT *
+            FROM {table_name}
+            WHERE id = ?
+              AND (status IS NULL OR status != 'deleted')
+            ORDER BY version DESC
+            LIMIT 1
+            """,
+            (object_id,),
+        )
+    else:
+        cur.execute(
+            f"""
+            SELECT *
+            FROM {table_name}
+            WHERE (status IS NULL OR status != 'deleted')
+            ORDER BY timestamp DESC, version DESC
+            LIMIT 1
+            """
+        )
+
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else {}
+
+
+def get_all_records(table_name):
+    """Return all current (non-deleted) records for a table."""
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        f"""
+        SELECT *
+        FROM {table_name}
+        WHERE (status IS NULL OR status != 'deleted')
+        ORDER BY timestamp DESC, version DESC
+        """
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
 
 def build_elements_from_db(include_deleted: bool = False, node_types: list | None = None, people_selected: list | None = None, degree: int = None):
     """

@@ -11,6 +11,7 @@ from dash import Dash, html, dcc, Input, Output, State, ctx
 import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
 from pydbml import PyDBML
+import yaml
 
 from form_gen import generate_form_layout, register_callbacks
 from visual_customization import stylesheet, title, NODE_TABLES
@@ -18,6 +19,15 @@ from db import build_elements_from_db, init_db, db_connect
 from analytics import analytics_log
 from analytics import init_db as analytics_init_db
 
+
+# ---------------------------------------------------------
+# Config Load
+# ---------------------------------------------------------
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+tables_config = config.get("tables", {})
+forms_config = config.get("forms", {})
 
 # ---------------------------------------------------------
 # Database initialization
@@ -316,8 +326,8 @@ def load_form(table_name, tap_node, tap_edge, person_id, refresh_signal):
 def show_add_form(table_name, person_id):
     if not table_name:
         return "Select a table"
-    table = next(t for t in dbml.tables if t.name == table_name)
-    return login_required(generate_form_layout)(table, dbml=dbml)
+    form_name = config["default_forms"][table_name]
+    return login_required(generate_form_layout)(form_name, forms_config=forms_config)
 
 
 def show_node_form(tap_node, person_id):
@@ -326,12 +336,12 @@ def show_node_form(tap_node, person_id):
         object_id = int(id_str)
     except (ValueError, TypeError):
         return html.Div("Invalid node clicked.")
-    table = next((t for t in dbml.tables if t.name == table_name), None)
-    if not table:
+    form_name = config["default_forms"].get(table_name, None)
+    if not form_name:
         return html.Div(f"Error: Table '{table_name}' not in DBML.")
     
     analytics_log(person_id, table_name, object_id)
-    return login_required(generate_form_layout)(table, object_id=object_id, dbml=dbml)
+    return login_required(generate_form_layout)(form_name, forms_config=forms_config, object_id=object_id)
 
 
 def show_edge_form(tap_edge, person_id):
@@ -340,10 +350,10 @@ def show_edge_form(tap_edge, person_id):
     analytics_log(person_id, table_name, object_id)
     if not table_name or object_id is None:
         return html.P(f"This edge ({tap_edge.get('label')}) is not editable.")
-    table = next((t for t in dbml.tables if t.name == table_name), None)
-    if not table:
+    form_name = config["default_forms"].get(table_name, None)
+    if not form_name:
         return html.Div(f"Error: Table '{table_name}' not in DBML.")
-    return login_required(generate_form_layout)(table, object_id=object_id, dbml=dbml)
+    return login_required(generate_form_layout)(form_name, forms_config=forms_config, object_id=object_id)
 
 
 @app.callback(Output('people-filter', 'options'), Input('intermediary-loaded', 'data'))
@@ -356,7 +366,7 @@ def populate_people_filter(_):
         return []
 
 
-register_callbacks(app, dbml)
+register_callbacks(app, forms_config)
 
 
 @app.callback(

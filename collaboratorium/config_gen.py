@@ -403,7 +403,7 @@ def generate_elements_for_table(table, db, fk_map, links_info):
 # Top-level config builder
 # -----------------------
 def build_config(db):
-    config = {"tables": {}, "links": {}, "forms": {}}
+    config = {"tables": {}, "links": {}, "forms": {}, "default_forms": {},}
 
     links_info = discover_link_tables(db)
     fk_map = collect_foreign_keys(db)
@@ -436,6 +436,7 @@ def build_config(db):
             config["tables"][table.name]["links"] = table_links
 
         form_name = f"{table.name}_form"
+        config["default_forms"][table.name] = form_name
         elements = generate_elements_for_table(table, db, fk_map, links_info)
         meta = generate_meta_for_table(table)
         config["forms"][form_name] = {

@@ -1,77 +1,12 @@
 from dash import html, dcc, Input, Output, State, ctx, ALL, no_update, MATCH
 from datetime import datetime
-from db import db_connect
-from visual_customization import dcl, NODE_TABLES
+from db import db_connect, get_latest_entry, get_dropdown_options
+from visual_customization import dcl
 
 
 # ==============================================================
 # DATABASE HELPERS
 # ==============================================================
-
-def get_dropdown_options(conn, table_name, dbml=None):
-    """
-    Fetch dropdown options for a foreign key reference.
-    Shows 'name' column as label if present, otherwise uses ID.
-    """
-    cur = conn.cursor()
-    label_col = "id"
-    if dbml:
-        table = next((t for t in dbml.tables if t.name == table_name), None)
-        if table and any(c.name == "name" for c in table.columns):
-            label_col = "name"
-
-    try:
-        sql_query = f'''
-        WITH RankedRows AS (
-            SELECT
-                "id",
-                "{label_col}",
-                "status",
-                -- 1. Rank all rows within each "id" group.
-                --    The highest version gets rank (rn) = 1.
-                ROW_NUMBER() OVER(PARTITION BY "id" ORDER BY "version" DESC) as rn
-            FROM "{table_name}"
-        )
-        -- 2. From the ranked list, select only the top-ranked row (rn = 1)
-        --    AND check its status.
-        SELECT
-            "id",
-            "{label_col}"
-        FROM RankedRows
-        WHERE
-            rn = 1 
-            AND "status" != 'deleted'
-        ORDER BY "id"
-        '''
-        cur.execute(sql_query)
-        rows = cur.fetchall()
-        return [{"label": str(r[1]), "value": r[0]} for r in rows]
-    except Exception as e:
-        print(f"[WARN] Error fetching options for {table_name}: {e}")
-        return []
-
-
-def get_latest_record(conn, table_name, object_id):
-    """Return the most recent non-deleted record for the given id."""
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            f"""
-            SELECT * FROM "{table_name}"
-            WHERE id = ? AND (status != 'deleted' OR status IS null)
-            ORDER BY version DESC
-            LIMIT 1
-            """,
-            (object_id,),
-        )
-        row = cur.fetchone()
-        if not row:
-            return {}
-        cols = [d[0] for d in cur.description]
-        return dict(zip(cols, row))
-    except Exception as e:
-        print(f"Error fetching record for {table_name}: {e}")
-        return {}
 
 
 def _get_max_id_from_cursor(cur, table_name):
@@ -82,194 +17,146 @@ def _get_max_id_from_cursor(cur, table_name):
 
 
 # ==============================================================
-# DBML STRUCTURE PARSING
-# ==============================================================
-
-def build_reference_index(dbml):
-    """Build mappings of foreign key relationships."""
-    fk_map = {}  # (child_table, child_column) -> (parent_table, parent_column)
-    for ref in dbml.refs:
-        col1 = ref.col1[0]
-        col2 = ref.col2[0]
-        child = (col1.table.name, col1.name)
-        parent = (col2.table.name, col2.name)
-        fk_map[child] = parent
-    return fk_map
-
-
-# ==============================================================
 # COMPONENT FACTORY
 # ==============================================================
 
-def component_for_column(col, conn, fk_map, dbml=None, value=None):
-    """Return an appropriate Dash component for a DBML column.
-       Accepts `value` to pre-populate the component at construction time.
-    """
-    tname = col.type.lower()
-    table_col_key = (col.table.name, col.name)
 
-    # Handle foreign key relationships
-    if table_col_key in fk_map:
-        ref_table, _ = fk_map[table_col_key]
-        options = get_dropdown_options(conn, ref_table, dbml=dbml)
-        return dcl.Dropdown(
-            id={"type": "input", "table": col.table.name, "column": col.name},
-            options=options,
-            placeholder=f"Select from {ref_table}",
-            value=value
-        )
+def component_for_element(element_config, form_name, value=None):
+    """Map element type from YAML to Dash component"""
+    element_type = element_config.get("type")
+    label = element_config.get("label", element_config["element_id"])
+    appearance = element_config.get("appearance", None)
 
-    # Handle primitive types
-    elif tname in ("varchar", "text", "char", "string"):
-        if col.name.lower() in ("description", "tags"):
-            return dcl.Textarea(
-                id={"type": "input", "table": col.table.name, "column": col.name},
-                placeholder=col.name, style={'width': '100%'},
-                value=value
-            )
-        return dcl.Input(
-            id={"type": "input", "table": col.table.name, "column": col.name},
-            type="text", placeholder=col.name, style={'width': '100%'},
-            value=value
+    input_type_mapping = {
+        "integer": "number",
+        "decimal": "number",
+        "email": "email",
+        "url": "url",
+        "tel": "tel",
+        "hidden": "hidden",
+    }
+    # --- TEXT / NUMBER / DATE ---
+    if element_type in ("text", "string", "integer", "decimal", "email", "url", "tel"):
+        return html.Div(
+            [
+                html.Label(label),
+                dcc.Input(
+                    id={"type": "input", "form": form_name, "element": element_config["element_id"]},
+                    type=input_type_mapping.get(element_type, "text"),
+                    value=value or "",
+                ),
+            ]
         )
-    elif tname in ("integer", "int"):
-        return dcl.Input(
-            id={"type": "input", "table": col.table.name, "column": col.name},
-            type="number", placeholder=col.name,
-            value=value
+    
+    # --- hidden ---
+    elif element_type == "hidden":
+        return dcc.Input(
+                    id={"type": "input", "form": form_name, "element": element_config["element_id"]},
+                    type="hidden",
+                    value=value or "",
+                )
+
+    # --- datetime ---
+    elif element_type == "datetime":
+        return html.Div(
+            [
+                html.Label(label),
+                dcc.DatePickerSingle(
+                    id={"type": "input", "form": form_name, "element": element_config["element_id"]},
+                    date=value or None,
+                ),
+            ]
         )
-    elif tname == "boolean":
+    
+    # --- boolean ---
+    elif element_type == "boolean":
         # Checklist expects a list for `value` — populate accordingly
         checklist_value = [True] if value else []
-        return dcl.Checklist(
-            id={"type": "input", "table": col.table.name, "column": col.name},
+        return dcc.Checklist(
+            id={"type": "input", "form": form_name, "element": element_config["element_id"]},
             options=[{"label": "True", "value": True}],
             value=checklist_value
         )
-    elif tname in ("datetime", "timestamp", "date"):
-        # DatePickerSingle expects `date` prop
-        return dcl.DatePickerSingle(
-            id={"type": "input", "table": col.table.name, "column": col.name},
-            date=value
+
+    # --- SELECT SINGLE ---
+    elif element_type == "select_one":
+        options = get_dropdown_options(
+            element_config["parameters"]["source_table"],
+            element_config["parameters"]["value_column"],
+            element_config["parameters"]["label_column"],
         )
-    else:
-        return dcl.Input(
-            id={"type": "input", "table": col.table.name, "column": col.name},
-            type="text", placeholder=f"{col.name} ({tname})", style={'width': '100%'},
-            value=value
+        return html.Div(
+            [
+                html.Label(label),
+                dcc.Dropdown(
+                    id={"type": "input", "form": form_name, "element": element_config["element_id"]},
+                    options=options,
+                    value=value,
+                    clearable=True,
+                ),
+            ]
         )
 
+    # --- SELECT MULTIPLE ---
+    elif element_type == "select_multiple":
+        options = get_dropdown_options(
+            element_config["parameters"]["source_table"],
+            element_config["parameters"]["value_column"],
+            element_config["parameters"]["label_column"],
+        )
+        return html.Div(
+            [
+                html.Label(label),
+                dcc.Dropdown(
+                    id={"type": "input", "form": form_name, "element": element_config["element_id"]},
+                    options=options,
+                    value=value or [],
+                    multi=True,
+                    clearable=True,
+                ),
+            ]
+        )
 
-def _create_link_dropdown(fields_list, conn, dbml, link_table, source_col, target_col, target_table, object_id=None, label_prefix=None):
-    """Helper function to create and append a multi-select dropdown for a linked entity."""
-    # ensure column names are strings
-    if hasattr(source_col, "name"):
-        source_col = source_col.name
-    if hasattr(target_col, "name"):
-        target_col = target_col.name
-
-    options = get_dropdown_options(conn, target_table, dbml=dbml)
-    if object_id is not None:
-        options = [opt for opt in options if opt['value'] != object_id]
-
-    cur = conn.cursor()
-    sql_query = f'''
-    WITH RankedRow AS (
-        -- 1. Find all rows for this ID and rank them
-        --    (highest version gets rn = 1)
-        SELECT
-            "{target_col}",
-            "status",
-            -- 1. Group rows by the link id
-            --    and rank them by version, newest = 1.
-            ROW_NUMBER() OVER(PARTITION BY id ORDER BY "version" DESC) as rn
-        FROM "{link_table}"
-        WHERE "{source_col}" = ?
-    )
-    -- 2. Select the top-ranked row (rn = 1)
-    --    only if its status is not 'deleted'
-    SELECT "{target_col}"
-    FROM RankedRow
-    WHERE rn = 1 AND "status" != 'deleted'
-    '''
-    cur.execute(sql_query, (object_id,))
-    current_values = [row[0] for row in cur.fetchall()]
-
-    label = label_prefix if label_prefix else f"Linked {target_table}"
-
-    dropdown = dcc.Dropdown(
-        id={"type": "link-input", "table": link_table, "source_col": source_col, "target_col": target_col},
-        options=options,
-        value=current_values,
-        multi=True,
-        placeholder=f"Select {label}...",
-    )
-    
-    fields_list.append(html.Div([
-        html.Label(label, style={"fontWeight": "bold"}),
-        dropdown
-    ], style={"marginBottom": "8px"}))
+    # --- DEFAULT FALLBACK ---
+    return html.Div([html.Label(label), html.Div("Unsupported element type")])
 
 
 # ==============================================================
 # FORM LAYOUT GENERATION
 # ==============================================================
 
-def generate_form_layout(table, object_id=None, dbml=None):
-    """Generate a Dash form layout, including multi-select dropdowns for link tables."""
-    fk_map = build_reference_index(dbml) if dbml else {}
-    conn = db_connect()
-    existing_data = get_latest_record(conn, table.name, object_id) if (conn and object_id) else {}
 
-    fields = []
-    for col in table.columns:
-        comp = component_for_column(col, conn, fk_map, dbml=dbml, value=existing_data.get(col.name))
-        fields.append(html.Div([
-            html.Label(col.name, style={"fontWeight": "bold"}),
-            comp
-        ], style={"marginBottom": "8px"}))
+def generate_form_layout(form_name, forms_config, object_id=None):
+    """Generate a Dash form layout from a form config"""
+    record_data = get_latest_entry(form_name, forms_config, object_id) if object_id else {}
 
-    if dbml:
-        link_tables = [t for t in dbml.tables if t.name not in NODE_TABLES]
-        for link_table in link_tables:
-            fks = [col for col in link_table.columns if (link_table.name, col.name) in fk_map]
-            if len(fks) != 2:
-                continue
+    elements = []
+    for element_name, element_def in forms_config[form_name].get("elements", {}).items():
+        val = record_data.get(element_name) if record_data else None
+        element_def = {**element_def, "element_id": element_name}
+        elements.append(component_for_element(element_def, form_name=form_name, value=val))
 
-            fk1_col, fk2_col = fks[0], fks[1]
-            fk1_parent_name = fk_map[(link_table.name, fk1_col.name)][0]
-            fk2_parent_name = fk_map[(link_table.name, fk2_col.name)][0]
+    meta_hidden = []
+    for element_name, element_def in forms_config[form_name].get("meta", {}).items():
+        val = record_data.get(element_name) if record_data else None
+        element_def = {"element_id": element_name, "type": "hidden"}
+        meta_hidden.append(component_for_element(element_def, form_name=form_name, value=val))
 
-            # Case 1: Self-referencing link table
-            if fk1_parent_name == table.name and fk2_parent_name == table.name:
-                p_col = fk1_col.name if 'parent' in fk1_col.name else fk2_col.name
-                c_col = fk2_col.name if 'child' in fk2_col.name else fk1_col.name
-                
-                _create_link_dropdown(fields, conn, dbml, link_table.name, source_col=c_col, target_col=p_col,
-                                     target_table=table.name, object_id=object_id, label_prefix="Parents")
-                _create_link_dropdown(fields, conn, dbml, link_table.name, source_col=p_col, target_col=c_col,
-                                     target_table=table.name, object_id=object_id, label_prefix="Children")
+    meta = html.Div([
+        html.Details(
+            [
+                html.Summary(f"metadata"),
+            ] + [html.Div(f"\t{key}: {record_data.get(key, None)}") for key in forms_config[form_name].get("meta", [])]
+        ),
+    ])
 
-            # Case 2: Standard link table
-            else:
-                source_col, target_col, target_table = (None, None, None)
-                if fk1_parent_name == table.name:
-                    source_col, target_col, target_table = fk1_col.name, fk2_col.name, fk2_parent_name
-                elif fk2_parent_name == table.name:
-                    source_col, target_col, target_table = fk2_col.name, fk1_col.name, fk1_parent_name
-                else:
-                    continue
-                
-                _create_link_dropdown(fields, conn, dbml, link_table.name,
-                                     source_col=source_col, target_col=target_col,
-                                     target_table=target_table, object_id=object_id)
-    
-    conn.close()
     return html.Div([
-        html.H3(f"Edit {table.name}" if object_id else f"Add {table.name}"),
-        *fields,
-        html.Button("Submit", id={"type": "submit", "table": table.name}, n_clicks=0),
-        html.Div(id={"type": "output", "table": table.name})
+        html.H3(f"Edit {forms_config[form_name]['label']}" if object_id else f"Add {forms_config[form_name]['label']}"),
+        meta,
+        *meta_hidden,
+        *elements,
+        html.Button("Submit", id={"type": "submit", "form": form_name}, n_clicks=0),
+        html.Div(id={"type": "output", "form": form_name})
     ])
 
 
@@ -277,24 +164,26 @@ def generate_form_layout(table, object_id=None, dbml=None):
 # CALLBACK REGISTRATION
 # ==============================================================
 
-def register_callbacks(app, dbml):
-    """Register one submit callback per table in the DBML schema."""
-    for table in dbml.tables:
-        input_ids = [{"type": "input", "table": table.name, "column": col.name} for col in table.columns]
-        state_args = [State(i, ("date" if "date" in i["column"] else "value")) for i in input_ids]
+def register_callbacks(app, forms_config):
+    """Register one submit callback per form in the config."""
+    for form_name, fc in forms_config.items():
+        input_ids = [{"type": "input", "form": form_name, "element": e_id} for e_id in fc["elements"].keys()]
+        state_args = [State(i, ("date" if "date" in i["element"] else "value")) for i in input_ids]
+        meta_ids = [{"type": "input", "form": form_name, "element": e_id} for e_id in fc["meta"].keys()]
+        state_args += [State(i, ("date" if "date" in i["element"] else "value")) for i in meta_ids]
 
         @app.callback(
             Output("out_msg", "children", allow_duplicate=True),
             Output('intermediary-loaded', 'data', allow_duplicate=True),
             Output("form-refresh", "data", allow_duplicate=True),
-            Input({"type": "submit", "table": table.name}, "n_clicks"),
+            Input({"type": "submit", "form": form_name}, "n_clicks"),
             State({"type": "link-input", "table": ALL, "source_col": ALL, "target_col": ALL}, "id"),
             State({"type": "link-input", "table": ALL, "source_col": ALL, "target_col": ALL}, "value"),
             State("current-person-id", "data"),
             *state_args,
             prevent_initial_call=True,
         )
-        def handle_submit(n_clicks, link_ids, link_values, person_id, *values, _table=table):
+        def handle_submit(n_clicks, link_ids, link_values, person_id, *values, _fc=fc):
             if n_clicks == 0:
                 return None, no_update, no_update
             
@@ -302,52 +191,67 @@ def register_callbacks(app, dbml):
             cur = conn.cursor()
 
             # Part 1: Handle the main object (Person, Initiative, etc.)
-            columns = [col.name for col in _table.columns]
-            data = dict(zip(columns, values))
-
-            # Normalize Dash data types before SQL
-            for k, v in data.items():
-                if isinstance(v, list):
-                    if len(v) == 0:
-                        data[k] = False
-                    elif len(v) == 1 and isinstance(v[0], bool):
-                        data[k] = v[0]
-                    else:
-                        data[k] = ",".join(map(str, v))
-                elif isinstance(v, bool):
-                    data[k] = int(v)
+            element_ids = list(_fc["elements"].keys())
+            data = dict(zip(element_ids + list(_fc["meta"].keys()), values))
 
             object_id = data.get('id')
+            if object_id == "":
+                data["id"] = None
+                object_id = None
             is_new_object = object_id is None
             
             out_msg = None
             if is_new_object:
-                new_id = _get_max_id_from_cursor(cur, _table.name) + 1
+                new_id = _get_max_id_from_cursor(cur, _fc["default_table"]) + 1
                 object_id = new_id
                 data['id'] = new_id
                 data['version'] = 1
                 data['status'] = 'active'
-                out_msg = html.Span(f"✅ Created {_table.name} record ID {data['id']}", style={"color": "green"})
+                out_msg = html.Span(f"✅ Created {_fc["default_table"]} record ID {data['id']}", style={"color": "green"})
             else:
                 data['version'] = (data.get('version') or 0) + 1
-                out_msg = html.Span(f"✅ Edited {_table.name} record ID {data['id']}", style={"color": "green"})
+                out_msg = html.Span(f"✅ Edited {_fc["default_table"]} record ID {data['id']}", style={"color": "green"})
             
             data['timestamp'] = datetime.now().isoformat()
             data['created_by'] = person_id
 
-            cols_sql = ", ".join([f'"{k}"' for k in data.keys()])
-            placeholders = ", ".join(["?"] * len(data))
-            vals = list(data.values())
-            cur.execute(f'INSERT INTO "{_table.name}" ({cols_sql}) VALUES ({placeholders})', vals)
+            cur.execute(f'pragma table_info("{_fc["default_table"]}")')
+            r=cur.fetchall()
+            cols_sql_ls = []
+            placeholders = []
+            vals = []
+            for col in r:
+                col_name = col[1]
+                cols_sql_ls.append(col_name)
+                placeholders.append("?")
+                vals.append(data[col_name])
+            cols_sql = ", ".join(cols_sql_ls)
+            placeholders = ", ".join(placeholders)
+            # Normalize Dash data types before SQL
+            for i, v in enumerate(vals):
+                if isinstance(v, list):
+                    if len(v) == 0:
+                        vals[i] = False
+                    elif len(v) == 1 and isinstance(v[0], bool):
+                        vals[i] = v[0]
+                    else:
+                        vals[i] = ",".join(map(str, v))
+                elif isinstance(v, bool):
+                    vals[i] = int(v)
+            cur.execute(f'INSERT INTO "{_fc["default_table"]}" ({cols_sql}) VALUES ({placeholders})', vals)
 
+            
+            extra_elements = [element for element in data.keys() if element not in cols_sql_ls]
             # Part 2: Handle the Link Table Updates
-            if link_ids:
-                for i, link_id_dict in enumerate(link_ids):
-                    link_table = link_id_dict['table']
-                    source_col = link_id_dict['source_col']
-                    target_col = link_id_dict['target_col']
+            for element in extra_elements:
+                if "store" in _fc["elements"][element].keys():
+                    link_table = _fc["elements"][element]["store"]["link_table"]
+                    source_col = _fc["elements"][element]["store"]['source_field']
+                    target_col = _fc["elements"][element]["store"]['target_field']
                     
-                    newly_selected_ids = set(link_values[i] if link_values[i] else [])
+                    link_values = data[element]
+
+                    newly_selected_ids = set(link_values if link_values else [])
 
                     sql_query = f'''
                     WITH RankedRow AS (

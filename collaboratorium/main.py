@@ -10,23 +10,25 @@ from datetime import datetime
 from dash import Dash, html, dcc, Input, Output, State, ctx
 import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
-from pydbml import PyDBML
 
 from form_gen import generate_form_layout, register_callbacks
-from visual_customization import stylesheet, title, NODE_TABLES
 from db import build_elements_from_db, init_db, db_connect
 from analytics import analytics_log
 from analytics import init_db as analytics_init_db
+from config_parser import load_config
 
+
+# ---------------------------------------------------------
+# Config Load
+# ---------------------------------------------------------
+config = load_config("config.yaml")
+forms_config = config.get("forms", {})
 
 # ---------------------------------------------------------
 # Database initialization
 # ---------------------------------------------------------
-with open("schema.dbml") as f:
-    dbml = PyDBML(f)
-init_db()
+init_db(config)
 analytics_init_db()
-
 
 # ---------------------------------------------------------
 # Flask + OAuth setup
@@ -144,9 +146,10 @@ def get_person_id_for_user(user):
 # ---------------------------------------------------------
 # Dash app setup
 # ---------------------------------------------------------
+cyto.load_extra_layouts()
 app = Dash(
-    title,
-    title=title,
+    config["title"],
+    title=config["title"],
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     server=server,
     suppress_callback_exceptions=True,
@@ -160,7 +163,7 @@ app.layout = dbc.Container([
     dcc.Store(id="form-refresh", data=False),
 
     dbc.Row([
-        dbc.Col(html.H2(title)),
+        dbc.Col(html.H2(config["title"])),
         dbc.Col([
             html.Div(id="login-area")
         ])
@@ -173,15 +176,15 @@ app.layout = dbc.Container([
                 dbc.CardBody([
                     dcc.Checklist(id='node-type-filter',
                                   options=[{'label': t, 'value': t} for t in
-                                           NODE_TABLES],
-                                  value=['people', 'organisations', 'initiatives', 'activities', 'contracts'],
+                                           config["node_tables"]],
+                                  value=config["node_tables"],
                                   inline=True),
                     dcc.Dropdown(id='people-filter', multi=True, placeholder='Filter by people...'),
                     dbc.Checklist(id='show-deleted', options=[{'label': 'Show deleted', 'value': 'show'}],
                                   value=[], inline=True),
                     dcc.Slider(id='degree-filter', min=1, max=5, step=1, value=1),
                     cyto.Cytoscape(id='cyto', elements=[], style={'width': '100%', 'height': '600px'},
-                                   layout={'name': 'cose'}, stylesheet=stylesheet)
+                                   layout=config["network_vis"]["layout"], stylesheet=config["network_vis"]["stylesheet"])
                 ])
             ])
         ], width=8),
@@ -193,7 +196,7 @@ app.layout = dbc.Container([
                         html.H2("Tables"),
                         dcc.Dropdown(
                             id="table-selector",
-                            options=[{"label": t.name, "value": t.name} for t in dbml.tables],
+                            options=[{"label": t, "value": t} for t in config["tables"].keys()],
                         ),
                         html.Div(id="form-container"),
                         html.Div(id="out_msg", children=[]),
@@ -316,8 +319,8 @@ def load_form(table_name, tap_node, tap_edge, person_id, refresh_signal):
 def show_add_form(table_name, person_id):
     if not table_name:
         return "Select a table"
-    table = next(t for t in dbml.tables if t.name == table_name)
-    return login_required(generate_form_layout)(table, dbml=dbml)
+    form_name = config["default_forms"][table_name]
+    return login_required(generate_form_layout)(form_name, forms_config=forms_config)
 
 
 def show_node_form(tap_node, person_id):
@@ -326,12 +329,12 @@ def show_node_form(tap_node, person_id):
         object_id = int(id_str)
     except (ValueError, TypeError):
         return html.Div("Invalid node clicked.")
-    table = next((t for t in dbml.tables if t.name == table_name), None)
-    if not table:
-        return html.Div(f"Error: Table '{table_name}' not in DBML.")
+    form_name = config["default_forms"].get(table_name, None)
+    if not form_name:
+        return html.Div(f"Error: Table '{table_name}' not in config['default_forms'].")
     
     analytics_log(person_id, table_name, object_id)
-    return login_required(generate_form_layout)(table, object_id=object_id, dbml=dbml)
+    return login_required(generate_form_layout)(form_name, forms_config=forms_config, object_id=object_id)
 
 
 def show_edge_form(tap_edge, person_id):
@@ -340,23 +343,23 @@ def show_edge_form(tap_edge, person_id):
     analytics_log(person_id, table_name, object_id)
     if not table_name or object_id is None:
         return html.P(f"This edge ({tap_edge.get('label')}) is not editable.")
-    table = next((t for t in dbml.tables if t.name == table_name), None)
-    if not table:
-        return html.Div(f"Error: Table '{table_name}' not in DBML.")
-    return login_required(generate_form_layout)(table, object_id=object_id, dbml=dbml)
+    form_name = config["default_forms"].get(table_name, None)
+    if not form_name:
+        return html.Div(f"Error: Table '{table_name}' not in config['default_forms'].")
+    return login_required(generate_form_layout)(form_name, forms_config=forms_config, object_id=object_id)
 
 
 @app.callback(Output('people-filter', 'options'), Input('intermediary-loaded', 'data'))
 def populate_people_filter(_):
     try:
-        elements = build_elements_from_db(include_deleted=False, node_types=['people'])
+        elements = login_required(build_elements_from_db)(config, include_deleted=False, node_types=['people'])
         nodes = [e for e in elements if 'source' not in e.get('data', {}) and e.get('data', {}).get('type') == 'people']
         return [{'label': n['data'].get('label'), 'value': n['data'].get('id')} for n in nodes]
     except Exception:
         return []
 
 
-register_callbacks(app, dbml)
+register_callbacks(app, forms_config)
 
 
 @app.callback(
@@ -372,6 +375,7 @@ def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree
 
     # Build elements directly from the authoritative DB using the active filters
     elements = login_required(build_elements_from_db)(
+        config,
         include_deleted=include_deleted,
         node_types=selected_types,
         people_selected=people_selected,

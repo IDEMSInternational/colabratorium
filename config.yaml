@@ -1,0 +1,975 @@
+title: Collaboratorium
+node_tables:
+- initiatives
+- people
+- organisations
+- activities
+- contracts
+- tags
+network_vis:
+  layout:
+    name: cose-bilkent
+  stylesheet:
+  - selector: node
+    style:
+      label: data(label)
+      text-valign: center
+      text-halign: center
+      font-size: 12px
+      width: 60px
+      height: 60px
+  - selector: edge
+    style:
+      curve-style: bezier
+      target-arrow-shape: triangle
+      # label: data(label)
+      font-size: 10px
+  - selector: .initiatives
+    style:
+      background-color: '#ff6900'
+      shape: round-rectangle
+      text-wrap: wrap
+      text-max-width: 60px
+  - selector: .people
+    style:
+      background-color: '#fcb900'
+      shape: ellipse
+      text-wrap: wrap
+      text-max-width: 60px
+  - selector: .organisations
+    style:
+      background-color: '#649ba3'
+      shape: hexagon
+      text-wrap: wrap
+      text-max-width: 60px
+  - selector: .activities
+    style:
+      background-color: '#9b51e0'
+      shape: rectangle
+      text-wrap: wrap
+      text-max-width: 60px
+  - selector: .contracts
+    style:
+      background-color: '#98FB98'
+      shape: round-rectangle
+      text-wrap: wrap
+      text-max-width: 60px
+  - selector: .tags
+    style:
+      background-color: '#ff6900'
+      shape: ellipse
+      text-wrap: wrap
+      text-max-width: 60px
+tables:
+  initiatives:
+    fields:
+      id: integer
+      version: integer
+      name: string
+      description: string
+      responsible_person: integer
+      timestamp: timestamp
+      tags: json
+      status: string
+      created_by: integer
+  people:
+    fields:
+      id: integer
+      version: integer
+      name: string
+      role: string
+      email: string
+      active: boolean
+      timestamp: timestamp
+      tags: json
+      status: string
+      created_by: integer
+  organisations:
+    fields:
+      id: integer
+      version: integer
+      timestamp: timestamp
+      name: string
+      description: string
+      location: string
+      contact_person: integer
+      tags: json
+      status: string
+      created_by: integer
+  activities:
+    fields:
+      id: integer
+      version: integer
+      timestamp: timestamp
+      name: string
+      description: string
+      location: string
+      start_date: timestamp
+      end_date: timestamp
+      tags: json
+      status: string
+      created_by: integer
+  contracts:
+    fields:
+      id: integer
+      version: integer
+      timestamp: timestamp
+      name: string
+      description: string
+      organisation: integer
+      organisation_person: integer
+      responsible_person: integer
+      start_date: timestamp
+      end_date: timestamp
+      tags: json
+      status: string
+      created_by: integer
+  activity_activity_links:
+    fields:
+      id: integer
+      version: integer
+      timestamp: timestamp
+      status: string
+      parent_id: integer
+      child_id: integer
+      type: string
+      created_by: integer
+  initiative_initiative_links:
+    fields:
+      id: integer
+      version: integer
+      timestamp: timestamp
+      status: string
+      parent_id: integer
+      child_id: integer
+      type: string
+      created_by: integer
+  activity_initiative_links:
+    fields:
+      id: integer
+      version: integer
+      timestamp: timestamp
+      status: string
+      activity_id: integer
+      initiative_id: integer
+      type: string
+      created_by: integer
+  activity_contract_links:
+    fields:
+      id: integer
+      version: integer
+      timestamp: timestamp
+      status: string
+      activity_id: integer
+      contract_id: integer
+      type: string
+      created_by: integer
+  contract_initiative_links:
+    fields:
+      id: integer
+      version: integer
+      timestamp: timestamp
+      status: string
+      contract_id: integer
+      initiative_id: integer
+      type: string
+      created_by: integer
+  organisation_people_links:
+    fields:
+      id: integer
+      version: integer
+      timestamp: timestamp
+      status: string
+      organisation_id: integer
+      person_id: integer
+      type: string
+      created_by: integer
+  activity_people_links:
+    fields:
+      id: integer
+      version: integer
+      timestamp: timestamp
+      status: string
+      activity_id: integer
+      person_id: integer
+      type: string
+      created_by: integer
+  tags:
+    fields:
+      id: integer
+      version: integer
+      name: string
+      key_values: json
+      initiatives: string
+      people: string
+      organisations: string
+      activities: string
+      contracts: string
+      timestamp: timestamp
+      status: string
+      created_by: integer
+links:
+  initiatives:
+    mappings:
+    - link_col: responsible_person
+      target_table: people
+      target_col: id
+  organisations:
+    mappings:
+    - link_col: contact_person
+      target_table: people
+      target_col: id
+  contracts:
+    mappings:
+    - link_col: organisation_person
+      target_table: people
+      target_col: id
+    - link_col: responsible_person
+      target_table: people
+      target_col: id
+    - link_col: organisation
+      target_table: organisations
+      target_col: id
+  activity_activity_links:
+    mappings:
+    - link_col: parent_id
+      target_table: activities
+      target_col: id
+    - link_col: child_id
+      target_table: activities
+      target_col: id
+  initiative_initiative_links:
+    mappings:
+    - link_col: parent_id
+      target_table: initiatives
+      target_col: id
+    - link_col: child_id
+      target_table: initiatives
+      target_col: id
+  activity_initiative_links:
+    mappings:
+    - link_col: activity_id
+      target_table: activities
+      target_col: id
+    - link_col: initiative_id
+      target_table: initiatives
+      target_col: id
+  activity_contract_links:
+    mappings:
+    - link_col: activity_id
+      target_table: activities
+      target_col: id
+    - link_col: contract_id
+      target_table: contracts
+      target_col: id
+  contract_initiative_links:
+    mappings:
+    - link_col: contract_id
+      target_table: contracts
+      target_col: id
+    - link_col: initiative_id
+      target_table: initiatives
+      target_col: id
+  organisation_people_links:
+    mappings:
+    - link_col: organisation_id
+      target_table: organisations
+      target_col: id
+    - link_col: person_id
+      target_table: people
+      target_col: id
+  activity_people_links:
+    mappings:
+    - link_col: activity_id
+      target_table: activities
+      target_col: id
+    - link_col: person_id
+      target_table: people
+      target_col: id
+forms:
+  initiatives_form:
+    label: Initiatives
+    default_table: initiatives
+    elements:
+      name:
+        type: string
+        label: Name
+      description:
+        type: string
+        label: Description
+      responsible_person:
+        type: select_one
+        appearance: dropdown
+        label: Responsible Person
+        parameters:
+          source_table: people
+          value_column: id
+          label_column: name
+      tags:
+        type: text
+        appearance: multiline
+        label: Tags
+      status:
+        type: string
+        label: Status
+      parents:
+        type: select_multiple
+        appearance: dropdown
+        label: Parent Initiatives
+        parameters:
+          source_table: initiatives
+          value_column: id
+          label_column: name
+        store:
+          link_table: initiative_initiative_links
+          source_field: child_id
+          target_field: parent_id
+          orientation: self
+      children:
+        type: select_multiple
+        appearance: dropdown
+        label: Child Initiatives
+        parameters:
+          source_table: initiatives
+          value_column: id
+          label_column: name
+        store:
+          link_table: initiative_initiative_links
+          source_field: parent_id
+          target_field: child_id
+          orientation: self
+      activities_links:
+        type: select_multiple
+        appearance: dropdown
+        label: Linked Activities
+        parameters:
+          source_table: activities
+          value_column: id
+          label_column: name
+        store:
+          link_table: activity_initiative_links
+          source_field: initiative_id
+          target_field: activity_id
+          orientation: forward
+      contracts_links:
+        type: select_multiple
+        appearance: dropdown
+        label: Linked Contracts
+        parameters:
+          source_table: contracts
+          value_column: id
+          label_column: name
+        store:
+          link_table: contract_initiative_links
+          source_field: initiative_id
+          target_field: contract_id
+          orientation: forward
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  people_form:
+    label: People
+    default_table: people
+    elements:
+      name:
+        type: string
+        label: Name
+      role:
+        type: string
+        label: Role
+      email:
+        type: email
+        label: Email
+      active:
+        type: boolean
+        label: Active
+      tags:
+        type: text
+        appearance: multiline
+        label: Tags
+      status:
+        type: string
+        label: Status
+      organisations_links:
+        type: select_multiple
+        appearance: dropdown
+        label: Linked Organisations
+        parameters:
+          source_table: organisations
+          value_column: id
+          label_column: name
+        store:
+          link_table: organisation_people_links
+          source_field: person_id
+          target_field: organisation_id
+          orientation: forward
+      activities_links:
+        type: select_multiple
+        appearance: dropdown
+        label: Linked Activities
+        parameters:
+          source_table: activities
+          value_column: id
+          label_column: name
+        store:
+          link_table: activity_people_links
+          source_field: person_id
+          target_field: activity_id
+          orientation: forward
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  organisations_form:
+    label: Organisations
+    default_table: organisations
+    elements:
+      name:
+        type: string
+        label: Name
+      description:
+        type: string
+        label: Description
+      location:
+        type: string
+        label: Location
+      contact_person:
+        type: select_one
+        appearance: dropdown
+        label: Contact Person
+        parameters:
+          source_table: people
+          value_column: id
+          label_column: name
+      tags:
+        type: text
+        appearance: multiline
+        label: Tags
+      status:
+        type: string
+        label: Status
+      people_links:
+        type: select_multiple
+        appearance: dropdown
+        label: Linked People
+        parameters:
+          source_table: people
+          value_column: id
+          label_column: name
+        store:
+          link_table: organisation_people_links
+          source_field: organisation_id
+          target_field: person_id
+          orientation: forward
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  activities_form:
+    label: Activities
+    default_table: activities
+    elements:
+      name:
+        type: string
+        label: Name
+      description:
+        type: string
+        label: Description
+      location:
+        type: string
+        label: Location
+      start_date:
+        type: datetime
+        label: Start Date
+      end_date:
+        type: datetime
+        label: End Date
+      tags:
+        type: text
+        appearance: multiline
+        label: Tags
+      status:
+        type: string
+        label: Status
+      parents:
+        type: select_multiple
+        appearance: dropdown
+        label: Parent Activities
+        parameters:
+          source_table: activities
+          value_column: id
+          label_column: name
+        store:
+          link_table: activity_activity_links
+          source_field: child_id
+          target_field: parent_id
+          orientation: self
+      children:
+        type: select_multiple
+        appearance: dropdown
+        label: Child Activities
+        parameters:
+          source_table: activities
+          value_column: id
+          label_column: name
+        store:
+          link_table: activity_activity_links
+          source_field: parent_id
+          target_field: child_id
+          orientation: self
+      initiatives_links:
+        type: select_multiple
+        appearance: dropdown
+        label: Linked Initiatives
+        parameters:
+          source_table: initiatives
+          value_column: id
+          label_column: name
+        store:
+          link_table: activity_initiative_links
+          source_field: activity_id
+          target_field: initiative_id
+          orientation: forward
+      contracts_links:
+        type: select_multiple
+        appearance: dropdown
+        label: Linked Contracts
+        parameters:
+          source_table: contracts
+          value_column: id
+          label_column: name
+        store:
+          link_table: activity_contract_links
+          source_field: activity_id
+          target_field: contract_id
+          orientation: forward
+      people_links:
+        type: select_multiple
+        appearance: dropdown
+        label: Linked People
+        parameters:
+          source_table: people
+          value_column: id
+          label_column: name
+        store:
+          link_table: activity_people_links
+          source_field: activity_id
+          target_field: person_id
+          orientation: forward
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  contracts_form:
+    label: Contracts
+    default_table: contracts
+    elements:
+      name:
+        type: string
+        label: Name
+      description:
+        type: string
+        label: Description
+      organisation:
+        type: select_one
+        appearance: dropdown
+        label: Organisation
+        parameters:
+          source_table: organisations
+          value_column: id
+          label_column: name
+      organisation_person:
+        type: select_one
+        appearance: dropdown
+        label: Organisation Person
+        parameters:
+          source_table: people
+          value_column: id
+          label_column: name
+      responsible_person:
+        type: select_one
+        appearance: dropdown
+        label: Responsible Person
+        parameters:
+          source_table: people
+          value_column: id
+          label_column: name
+      start_date:
+        type: datetime
+        label: Start Date
+      end_date:
+        type: datetime
+        label: End Date
+      tags:
+        type: text
+        appearance: multiline
+        label: Tags
+      status:
+        type: string
+        label: Status
+      activities_links:
+        type: select_multiple
+        appearance: dropdown
+        label: Linked Activities
+        parameters:
+          source_table: activities
+          value_column: id
+          label_column: name
+        store:
+          link_table: activity_contract_links
+          source_field: contract_id
+          target_field: activity_id
+          orientation: forward
+      initiatives_links:
+        type: select_multiple
+        appearance: dropdown
+        label: Linked Initiatives
+        parameters:
+          source_table: initiatives
+          value_column: id
+          label_column: name
+        store:
+          link_table: contract_initiative_links
+          source_field: contract_id
+          target_field: initiative_id
+          orientation: forward
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  activity_activity_links_form:
+    label: Activity Activity Links
+    default_table: activity_activity_links
+    elements:
+      status:
+        type: string
+        label: Status
+      parent_id:
+        type: select_one
+        appearance: dropdown
+        label: Parent Id
+        parameters:
+          source_table: activities
+          value_column: id
+          label_column: name
+      child_id:
+        type: select_one
+        appearance: dropdown
+        label: Child Id
+        parameters:
+          source_table: activities
+          value_column: id
+          label_column: name
+      type:
+        type: string
+        label: Type
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  initiative_initiative_links_form:
+    label: Initiative Initiative Links
+    default_table: initiative_initiative_links
+    elements:
+      status:
+        type: string
+        label: Status
+      parent_id:
+        type: select_one
+        appearance: dropdown
+        label: Parent Id
+        parameters:
+          source_table: initiatives
+          value_column: id
+          label_column: name
+      child_id:
+        type: select_one
+        appearance: dropdown
+        label: Child Id
+        parameters:
+          source_table: initiatives
+          value_column: id
+          label_column: name
+      type:
+        type: string
+        label: Type
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  activity_initiative_links_form:
+    label: Activity Initiative Links
+    default_table: activity_initiative_links
+    elements:
+      status:
+        type: string
+        label: Status
+      activity_id:
+        type: select_one
+        appearance: dropdown
+        label: Activity Id
+        parameters:
+          source_table: activities
+          value_column: id
+          label_column: name
+      initiative_id:
+        type: select_one
+        appearance: dropdown
+        label: Initiative Id
+        parameters:
+          source_table: initiatives
+          value_column: id
+          label_column: name
+      type:
+        type: string
+        label: Type
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  activity_contract_links_form:
+    label: Activity Contract Links
+    default_table: activity_contract_links
+    elements:
+      status:
+        type: string
+        label: Status
+      activity_id:
+        type: select_one
+        appearance: dropdown
+        label: Activity Id
+        parameters:
+          source_table: activities
+          value_column: id
+          label_column: name
+      contract_id:
+        type: select_one
+        appearance: dropdown
+        label: Contract Id
+        parameters:
+          source_table: contracts
+          value_column: id
+          label_column: name
+      type:
+        type: string
+        label: Type
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  contract_initiative_links_form:
+    label: Contract Initiative Links
+    default_table: contract_initiative_links
+    elements:
+      status:
+        type: string
+        label: Status
+      contract_id:
+        type: select_one
+        appearance: dropdown
+        label: Contract Id
+        parameters:
+          source_table: contracts
+          value_column: id
+          label_column: name
+      initiative_id:
+        type: select_one
+        appearance: dropdown
+        label: Initiative Id
+        parameters:
+          source_table: initiatives
+          value_column: id
+          label_column: name
+      type:
+        type: string
+        label: Type
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  organisation_people_links_form:
+    label: Organisation People Links
+    default_table: organisation_people_links
+    elements:
+      status:
+        type: string
+        label: Status
+      organisation_id:
+        type: select_one
+        appearance: dropdown
+        label: Organisation Id
+        parameters:
+          source_table: organisations
+          value_column: id
+          label_column: name
+      person_id:
+        type: select_one
+        appearance: dropdown
+        label: Person Id
+        parameters:
+          source_table: people
+          value_column: id
+          label_column: name
+      type:
+        type: string
+        label: Type
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  activity_people_links_form:
+    label: Activity People Links
+    default_table: activity_people_links
+    elements:
+      status:
+        type: string
+        label: Status
+      activity_id:
+        type: select_one
+        appearance: dropdown
+        label: Activity Id
+        parameters:
+          source_table: activities
+          value_column: id
+          label_column: name
+      person_id:
+        type: select_one
+        appearance: dropdown
+        label: Person Id
+        parameters:
+          source_table: people
+          value_column: id
+          label_column: name
+      type:
+        type: string
+        label: Type
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+  tags_form:
+    label: Tags
+    default_table: tags
+    elements:
+      name:
+        type: string
+        label: Name
+      key_values:
+        type: text
+        appearance: multiline
+        label: Key Values
+      initiatives:
+        type: string
+        label: Initiatives
+      people:
+        type: string
+        label: People
+      organisations:
+        type: string
+        label: Organisations
+      activities:
+        type: string
+        label: Activities
+      contracts:
+        type: string
+        label: Contracts
+      status:
+        type: string
+        label: Status
+    meta:
+      id:
+        strategy: uuid
+        editable: false
+      version:
+        strategy: increment
+      timestamp:
+        strategy: now
+      created_by:
+        strategy: current_user
+default_forms:
+  initiatives: initiatives_form
+  people: people_form
+  organisations: organisations_form
+  activities: activities_form
+  contracts: contracts_form
+  activity_activity_links: activity_activity_links_form
+  initiative_initiative_links: initiative_initiative_links_form
+  activity_initiative_links: activity_initiative_links_form
+  activity_contract_links: activity_contract_links_form
+  contract_initiative_links: contract_initiative_links_form
+  organisation_people_links: organisation_people_links_form
+  activity_people_links: activity_people_links_form
+  tags: tags_form

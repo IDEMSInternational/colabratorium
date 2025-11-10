@@ -6,57 +6,60 @@ node_tables:
 - activities
 - contracts
 - tags
-network_stylesheet:
-- selector: node
-  style:
-    label: data(label)
-    text-valign: center
-    text-halign: center
-    font-size: 12px
-    width: 60px
-    height: 60px
-- selector: edge
-  style:
-    curve-style: bezier
-    target-arrow-shape: triangle
-    label: data(label)
-    font-size: 10px
-- selector: .initiatives
-  style:
-    background-color: '#ff6900'
-    shape: round-rectangle
-    text-wrap: wrap
-    text-max-width: 60px
-- selector: .people
-  style:
-    background-color: '#fcb900'
-    shape: ellipse
-    text-wrap: wrap
-    text-max-width: 60px
-- selector: .organisations
-  style:
-    background-color: '#649ba3'
-    shape: hexagon
-    text-wrap: wrap
-    text-max-width: 60px
-- selector: .activities
-  style:
-    background-color: '#9b51e0'
-    shape: rectangle
-    text-wrap: wrap
-    text-max-width: 60px
-- selector: .contracts
-  style:
-    background-color: '#98FB98'
-    shape: round-rectangle
-    text-wrap: wrap
-    text-max-width: 60px
-- selector: .tags
-  style:
-    background-color: '#ff6900'
-    shape: ellipse
-    text-wrap: wrap
-    text-max-width: 60px
+network_vis:
+  layout:
+    name: cose
+  stylesheet:
+  - selector: node
+    style:
+      label: data(label)
+      text-valign: center
+      text-halign: center
+      font-size: 12px
+      width: 60px
+      height: 60px
+  - selector: edge
+    style:
+      curve-style: bezier
+      target-arrow-shape: triangle
+      # label: data(label)
+      font-size: 10px
+  - selector: .initiatives
+    style:
+      background-color: '#ff6900'
+      shape: round-rectangle
+      text-wrap: wrap
+      text-max-width: 60px
+  - selector: .people
+    style:
+      background-color: '#fcb900'
+      shape: ellipse
+      text-wrap: wrap
+      text-max-width: 60px
+  - selector: .organisations
+    style:
+      background-color: '#649ba3'
+      shape: hexagon
+      text-wrap: wrap
+      text-max-width: 60px
+  - selector: .activities
+    style:
+      background-color: '#9b51e0'
+      shape: rectangle
+      text-wrap: wrap
+      text-max-width: 60px
+  - selector: .contracts
+    style:
+      background-color: '#98FB98'
+      shape: round-rectangle
+      text-wrap: wrap
+      text-max-width: 60px
+  - selector: .tags
+    style:
+      background-color: '#ff6900'
+      shape: ellipse
+      text-wrap: wrap
+      text-max-width: 60px
 tables:
   initiatives:
     fields:

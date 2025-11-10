@@ -437,7 +437,7 @@ def gen_network_stylesheet(node_list):
 # -----------------------
 def build_config(db):
     config = {"title": "Default Title",
-        "node_tables": [], "network_stylesheet": [],
+        "node_tables": [], "network_vis": {},
         "tables": {}, "links": {}, "forms": {}, "default_forms": {},}
 
     links_info = discover_link_tables(db)
@@ -472,7 +472,9 @@ def build_config(db):
             "elements": elements,
             "meta": meta
         }
-    config["network_stylesheet"] = gen_network_stylesheet(config["node_tables"])
+    config["network_vis"]["layout"] = {"name": "cose"}
+    config["network_vis"]["stylesheet"] = gen_network_stylesheet(config["node_tables"])
+    config["network_vis"]["layout"]
     return config
 
 

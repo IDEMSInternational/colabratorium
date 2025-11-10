@@ -183,7 +183,7 @@ app.layout = dbc.Container([
                                   value=[], inline=True),
                     dcc.Slider(id='degree-filter', min=1, max=5, step=1, value=1),
                     cyto.Cytoscape(id='cyto', elements=[], style={'width': '100%', 'height': '600px'},
-                                   layout={'name': 'cose'}, stylesheet=config["network_stylesheet"])
+                                   layout=config["network_vis"]["layout"], stylesheet=config["network_vis"]["stylesheet"])
                 ])
             ])
         ], width=8),

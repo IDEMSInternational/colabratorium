@@ -297,6 +297,7 @@ forms:
       description:
         type: string
         label: Description
+        appearance: multiline
       responsible_person:
         type: select_one
         appearance: dropdown
@@ -443,6 +444,7 @@ forms:
       description:
         type: string
         label: Description
+        appearance: multiline
       location:
         type: string
         label: Location
@@ -494,6 +496,7 @@ forms:
       description:
         type: string
         label: Description
+        appearance: multiline
       location:
         type: string
         label: Location
@@ -595,6 +598,7 @@ forms:
       description:
         type: string
         label: Description
+        appearance: multiline
       organisation:
         type: select_one
         appearance: dropdown

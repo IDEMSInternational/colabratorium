@@ -37,6 +37,17 @@ def component_for_element(element_config, form_name, value=None):
     }
     # --- TEXT / NUMBER / DATE ---
     if element_type in ("text", "string", "integer", "decimal", "email", "url", "tel"):
+        if appearance == "multiline":
+            return html.Div(
+                [
+                    html.Label(label),
+                    dcl.Textarea(
+                        id={"type": "input", "form": form_name, "element": element_config["element_id"]},
+                        style={'width': '100%'},
+                        value=value or "",
+                    ),
+                ]
+            )
         return html.Div(
             [
                 html.Label(label),

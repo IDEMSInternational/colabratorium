@@ -25,8 +25,8 @@ services:
       # Bind-mount the host database file into the container so data persists
       - ./database.db:/app/database.db
       - ./analytics.db:/app/analytics.db
-      # Also mount schema so container and host share the same schema file
-      - ./schema.dbml:/app/schema.dbml:ro
+      # Also mount config so container and host share the same config file
+      - ./config.yaml:/app/config.yaml:ro
       - ./.env:/app/.env
     restart: unless-stopped
 

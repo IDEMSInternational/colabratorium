@@ -55,6 +55,7 @@ def component_for_element(element_config, form_name, value=None):
                     id={"type": "input", "form": form_name, "element": element_config["element_id"]},
                     type=input_type_mapping.get(element_type, "text"),
                     value=value or "",
+                    style={'width': '100%'},
                 ),
             ]
         )

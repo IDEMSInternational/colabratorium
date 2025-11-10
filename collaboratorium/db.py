@@ -3,25 +3,11 @@ import os
 from datetime import datetime, timezone
 import json
 import pandas as pd
-from pydbml import PyDBML
 import networkx as nx  # Import networkx for degree filtering
 from visual_customization import NODE_TABLES
 
 
 DB = 'database.db'
-DBML_FILE = 'schema.dbml'
-
-
-# Load the DBML schema once at the module level
-try:
-    with open(DBML_FILE) as f:
-        dbml = PyDBML(f)
-except FileNotFoundError:
-    print(f"[ERROR] DBML file not found at {DBML_FILE}. Functions in db.py will fail.")
-    dbml = None
-except Exception as e:
-    print(f"[ERROR] Failed to parse DBML file {DBML_FILE}: {e}")
-    dbml = None
 
 
 def db_connect():
@@ -233,15 +219,13 @@ def get_dropdown_options(table_name, value_column, label_column):
 
 def build_elements_from_db(config, include_deleted: bool = False, node_types: list | None = None, people_selected: list | None = None, degree: int = None):
     """
-    Build Cytoscape-style elements (nodes + edges) dynamically from the DBML schema.
+    Build Cytoscape-style elements (nodes + edges) dynamically from the config.
     
     - include_deleted: Show items with 'deleted' status.
     - node_types: List of table names to show (e.g., ['people', 'initiatives']).
     - people_selected: List of people IDs (e.g., ['people-1']) to use as starting points.
     - degree: N-degree filtering from 'people_selected'. If None, shows all.
     """
-    if dbml is None:
-        raise RuntimeError(f"DBML file not found or failed to parse. Cannot build elements.")
 
     rconn = db_connect()
 
@@ -261,8 +245,8 @@ def build_elements_from_db(config, include_deleted: bool = False, node_types: li
 
     # Load ALL tables into dataframes. Filtering happens in memory.
     dataframes = {}
-    for table in dbml.tables:
-        dataframes[table.name] = db_df(f'SELECT * FROM "{table.name}"')
+    for table in config["tables"].keys():
+        dataframes[table] = db_df(f'SELECT * FROM "{table}"')
 
     # Apply status filter (exclude deleted) if requested
     def _filter_deleted(df):
@@ -342,25 +326,20 @@ def build_elements_from_db(config, include_deleted: bool = False, node_types: li
             return None
 
     all_edges = []
-    link_tables = [t for t in dbml.tables if t.name not in NODE_TABLES]
+    link_tables = {table_name: table for table_name, table in config["tables"].items() if table_name not in NODE_TABLES}
     
-    for ref in dbml.refs:
+    for (child_table, child_col_name), (parent_table, parent_col_name) in config.fk_map.items():
         try:
-            child_table = ref.col1[0].table
-            child_col_name = ref.col1[0].name
-            parent_table = ref.col2[0].table
-            parent_col_name = ref.col2[0].name # Usually 'id'
-
             # Case 1: Direct FK (e.g., initiatives.responsible_person -> people.id)
-            if child_table.name in NODE_TABLES:
-                df = dataframes.get(child_table.name)
+            if child_table in NODE_TABLES:
+                df = dataframes.get(child_table)
                 if df is None or df.empty: continue
                 for _, row in df.iterrows():
                     if row.get(child_col_name) is not None and not pd.isna(row.get(child_col_name)):
                         edge = add_edge(
-                            src_table=parent_table.name, # 'people'
+                            src_table=parent_table, # 'people'
                             src_obj_id=row[child_col_name],
-                            tgt_table=child_table.name, # 'initiatives'
+                            tgt_table=child_table, # 'initiatives'
                             tgt_obj_id=row[parent_col_name], # 'id'
                             label=child_col_name.replace('_', ' ').replace('id', ''),
                             link_status=row.get('status')
@@ -371,25 +350,26 @@ def build_elements_from_db(config, include_deleted: bool = False, node_types: li
             elif child_table in link_tables:
                 # Find the *other* FK on this link table
                 other_fk_col = None
-                for col in child_table.columns:
-                    if col.name != child_col_name and (child_table.name, col.name) in config.fk_map:
+                for (_table, col) in config.fk_map.keys():
+                    if col != child_col_name and child_table == _table and (child_table, col) in config.fk_map:
                         other_fk_col = col
                         break
                 
                 if not other_fk_col: continue
-                if child_col_name > other_fk_col.name: continue # Process each link table only once
+                key_list = list(config.fk_map.keys())
+                if key_list.index((child_table, child_col_name)) > key_list.index((child_table, other_fk_col)): continue # Process each link table only once
 
-                other_parent_table_name = config.fk_map[(child_table.name, other_fk_col.name)][0]
+                other_parent_table_name = config.fk_map[(child_table, other_fk_col)][0]
                 
                 # Handle self-referencing tables
-                if child_table.name == 'initiative_initiative_links':
+                if child_table == 'initiative_initiative_links':
                     source_col_name, target_col_name = 'parent_id', 'child_id'
                     source_table_name, target_table_name = 'initiatives', 'initiatives'
                 else:
-                    source_col_name, target_col_name = other_fk_col.name, child_col_name
-                    source_table_name, target_table_name = other_parent_table_name, parent_table.name
+                    source_col_name, target_col_name = other_fk_col, child_col_name
+                    source_table_name, target_table_name = other_parent_table_name, parent_table
 
-                df = dataframes.get(child_table.name)
+                df = dataframes.get(child_table)
                 if df is None or df.empty: continue
                 
                 for _, row in df.iterrows():
@@ -398,14 +378,14 @@ def build_elements_from_db(config, include_deleted: bool = False, node_types: li
                         src_obj_id=row[source_col_name],
                         tgt_table=target_table_name,
                         tgt_obj_id=row[target_col_name],
-                        label=row.get('type') or child_table.name.replace('_links', '').replace('_', ' '),
-                        link_table=child_table.name,
+                        label=row.get('type') or child_table.replace('_links', '').replace('_', ' '),
+                        link_table=child_table,
                         link_obj_id=row.get('id'),
                         link_status=row.get('status')
                     )
                     if edge: all_edges.append(edge)
         except Exception as e:
-            print(f"[WARN] Failed to build edge from ref {ref.col1[0].table.name}.{ref.col1[0].name}: {e}")
+            print(f"[WARN] Failed to build edge from ref {(child_table, child_col_name), (parent_table, parent_col_name)}: {e}")
 
     rconn.close()
     

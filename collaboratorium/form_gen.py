@@ -1,7 +1,7 @@
 from dash import html, dcc, Input, Output, State, ctx, ALL, no_update, MATCH
 from datetime import datetime
 from db import db_connect, get_latest_entry, get_dropdown_options
-from visual_customization import dcl, NODE_TABLES
+from visual_customization import dcl
 
 
 # ==============================================================

@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 import json
 import pandas as pd
 import networkx as nx  # Import networkx for degree filtering
-from visual_customization import NODE_TABLES
 
 
 DB = 'database.db'
@@ -271,7 +270,7 @@ def build_elements_from_db(config, include_deleted: bool = False, node_types: li
         return {'data': {'id': nid, 'label': label, 'type': table_name, 'properties': props}, 'classes': table_name}
 
     all_nodes = []
-    for table_name in NODE_TABLES:
+    for table_name in config["node_tables"]:
         df = dataframes.get(table_name)
         if df is not None and not df.empty:
             for _, r in df.iterrows():
@@ -326,12 +325,12 @@ def build_elements_from_db(config, include_deleted: bool = False, node_types: li
             return None
 
     all_edges = []
-    link_tables = {table_name: table for table_name, table in config["tables"].items() if table_name not in NODE_TABLES}
+    link_tables = {table_name: table for table_name, table in config["tables"].items() if table_name not in config["node_tables"]}
     
     for (child_table, child_col_name), (parent_table, parent_col_name) in config.fk_map.items():
         try:
             # Case 1: Direct FK (e.g., initiatives.responsible_person -> people.id)
-            if child_table in NODE_TABLES:
+            if child_table in config["node_tables"]:
                 df = dataframes.get(child_table)
                 if df is None or df.empty: continue
                 for _, row in df.iterrows():

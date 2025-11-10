@@ -1,3 +1,62 @@
+title: Collaboratorium
+node_tables:
+- initiatives
+- people
+- organisations
+- activities
+- contracts
+- tags
+network_stylesheet:
+- selector: node
+  style:
+    label: data(label)
+    text-valign: center
+    text-halign: center
+    font-size: 12px
+    width: 60px
+    height: 60px
+- selector: edge
+  style:
+    curve-style: bezier
+    target-arrow-shape: triangle
+    label: data(label)
+    font-size: 10px
+- selector: .initiatives
+  style:
+    background-color: '#ff6900'
+    shape: round-rectangle
+    text-wrap: wrap
+    text-max-width: 60px
+- selector: .people
+  style:
+    background-color: '#fcb900'
+    shape: ellipse
+    text-wrap: wrap
+    text-max-width: 60px
+- selector: .organisations
+  style:
+    background-color: '#649ba3'
+    shape: hexagon
+    text-wrap: wrap
+    text-max-width: 60px
+- selector: .activities
+  style:
+    background-color: '#9b51e0'
+    shape: rectangle
+    text-wrap: wrap
+    text-max-width: 60px
+- selector: .contracts
+  style:
+    background-color: '#98FB98'
+    shape: round-rectangle
+    text-wrap: wrap
+    text-max-width: 60px
+- selector: .tags
+  style:
+    background-color: '#ff6900'
+    shape: ellipse
+    text-wrap: wrap
+    text-max-width: 60px
 tables:
   initiatives:
     fields:
@@ -10,28 +69,6 @@ tables:
       tags: json
       status: string
       created_by: integer
-    links:
-      initiative_initiative_links:
-      - link_col: parent_id
-        target_table: initiatives
-        target_col: id
-      - link_col: child_id
-        target_table: initiatives
-        target_col: id
-      activity_initiative_links:
-      - link_col: activity_id
-        target_table: activities
-        target_col: id
-      - link_col: initiative_id
-        target_table: initiatives
-        target_col: id
-      contract_initiative_links:
-      - link_col: contract_id
-        target_table: contracts
-        target_col: id
-      - link_col: initiative_id
-        target_table: initiatives
-        target_col: id
   people:
     fields:
       id: integer
@@ -44,21 +81,6 @@ tables:
       tags: json
       status: string
       created_by: integer
-    links:
-      organisation_people_links:
-      - link_col: organisation_id
-        target_table: organisations
-        target_col: id
-      - link_col: person_id
-        target_table: people
-        target_col: id
-      activity_people_links:
-      - link_col: activity_id
-        target_table: activities
-        target_col: id
-      - link_col: person_id
-        target_table: people
-        target_col: id
   organisations:
     fields:
       id: integer
@@ -71,14 +93,6 @@ tables:
       tags: json
       status: string
       created_by: integer
-    links:
-      organisation_people_links:
-      - link_col: organisation_id
-        target_table: organisations
-        target_col: id
-      - link_col: person_id
-        target_table: people
-        target_col: id
   activities:
     fields:
       id: integer
@@ -92,35 +106,6 @@ tables:
       tags: json
       status: string
       created_by: integer
-    links:
-      activity_activity_links:
-      - link_col: parent_id
-        target_table: activities
-        target_col: id
-      - link_col: child_id
-        target_table: activities
-        target_col: id
-      activity_initiative_links:
-      - link_col: activity_id
-        target_table: activities
-        target_col: id
-      - link_col: initiative_id
-        target_table: initiatives
-        target_col: id
-      activity_contract_links:
-      - link_col: activity_id
-        target_table: activities
-        target_col: id
-      - link_col: contract_id
-        target_table: contracts
-        target_col: id
-      activity_people_links:
-      - link_col: activity_id
-        target_table: activities
-        target_col: id
-      - link_col: person_id
-        target_table: people
-        target_col: id
   contracts:
     fields:
       id: integer
@@ -136,21 +121,6 @@ tables:
       tags: json
       status: string
       created_by: integer
-    links:
-      activity_contract_links:
-      - link_col: activity_id
-        target_table: activities
-        target_col: id
-      - link_col: contract_id
-        target_table: contracts
-        target_col: id
-      contract_initiative_links:
-      - link_col: contract_id
-        target_table: contracts
-        target_col: id
-      - link_col: initiative_id
-        target_table: initiatives
-        target_col: id
   activity_activity_links:
     fields:
       id: integer

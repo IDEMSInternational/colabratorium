@@ -18,6 +18,7 @@ from pathlib import Path
 import sys
 import yaml
 from collections import defaultdict
+from itertools import cycle
 
 # defensive import of pydbml
 try:
@@ -400,10 +401,44 @@ def generate_elements_for_table(table, db, fk_map, links_info):
 
 
 # -----------------------
+# Stylesheet Generation
+# -----------------------
+def gen_network_stylesheet(node_list):
+    stylesheet = [
+        {
+            'selector': 'node',
+            'style': {
+                'label': 'data(label)',
+                'text-valign': 'center',
+                'text-halign': 'center',
+                'font-size': '12px',
+                'width': '60px',
+                'height': '60px',
+            }
+        },
+        {'selector': 'edge', 'style': {'curve-style': 'bezier', 'target-arrow-shape': 'triangle', 'label': 'data(label)', 'font-size': '10px'}}        
+    ]
+    colors = cycle(["#ff6900", "#fcb900", "#649ba3", "#9b51e0", "#98FB98",])
+    shapes = cycle(['round-rectangle', 'ellipse', 'hexagon', 'rectangle',])
+    for node in node_list:
+        stylesheet.append({
+            'selector': f'.{node}', 'style': {
+                'background-color': next(colors), 'shape': next(shapes), 
+                'text-wrap': 'wrap',
+                'text-max-width': '60px'
+                }
+            })
+
+    return stylesheet
+
+
+# -----------------------
 # Top-level config builder
 # -----------------------
 def build_config(db):
-    config = {"tables": {}, "links": {}, "forms": {}, "default_forms": {},}
+    config = {"title": "Default Title",
+        "node_tables": [], "network_stylesheet": [],
+        "tables": {}, "links": {}, "forms": {}, "default_forms": {},}
 
     links_info = discover_link_tables(db)
     fk_map = collect_foreign_keys(db)
@@ -424,16 +459,8 @@ def build_config(db):
             fields[col.name] = safe_column_type_name(col)
         config["tables"][table.name] = {"fields": fields}
 
-        # table links (which link tables reference this table)
-        table_links = {}
-        for link_table_name, info in links_info.items():
-            if any(m.get("target_table") == table.name for m in info.get("mappings", [])):
-                table_links[link_table_name] = [
-                    {"link_col": m["link_col"], "target_table": m["target_table"], "target_col": m["target_col"]}
-                    for m in info.get("mappings", [])
-                ]
-        if table_links:
-            config["tables"][table.name]["links"] = table_links
+        if table.name not in links_info.keys():
+            config["node_tables"].append(table.name)
 
         form_name = f"{table.name}_form"
         config["default_forms"][table.name] = form_name
@@ -445,7 +472,7 @@ def build_config(db):
             "elements": elements,
             "meta": meta
         }
-
+    config["network_stylesheet"] = gen_network_stylesheet(config["node_tables"])
     return config
 
 

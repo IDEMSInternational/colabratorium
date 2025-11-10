@@ -12,7 +12,6 @@ import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
 
 from form_gen import generate_form_layout, register_callbacks
-from visual_customization import stylesheet, title, NODE_TABLES
 from db import build_elements_from_db, init_db, db_connect
 from analytics import analytics_log
 from analytics import init_db as analytics_init_db
@@ -148,8 +147,8 @@ def get_person_id_for_user(user):
 # Dash app setup
 # ---------------------------------------------------------
 app = Dash(
-    title,
-    title=title,
+    config["title"],
+    title=config["title"],
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     server=server,
     suppress_callback_exceptions=True,
@@ -163,7 +162,7 @@ app.layout = dbc.Container([
     dcc.Store(id="form-refresh", data=False),
 
     dbc.Row([
-        dbc.Col(html.H2(title)),
+        dbc.Col(html.H2(config["title"])),
         dbc.Col([
             html.Div(id="login-area")
         ])
@@ -176,15 +175,15 @@ app.layout = dbc.Container([
                 dbc.CardBody([
                     dcc.Checklist(id='node-type-filter',
                                   options=[{'label': t, 'value': t} for t in
-                                           NODE_TABLES],
-                                  value=['people', 'organisations', 'initiatives', 'activities', 'contracts'],
+                                           config["node_tables"]],
+                                  value=config["node_tables"],
                                   inline=True),
                     dcc.Dropdown(id='people-filter', multi=True, placeholder='Filter by people...'),
                     dbc.Checklist(id='show-deleted', options=[{'label': 'Show deleted', 'value': 'show'}],
                                   value=[], inline=True),
                     dcc.Slider(id='degree-filter', min=1, max=5, step=1, value=1),
                     cyto.Cytoscape(id='cyto', elements=[], style={'width': '100%', 'height': '600px'},
-                                   layout={'name': 'cose'}, stylesheet=stylesheet)
+                                   layout={'name': 'cose'}, stylesheet=config["network_stylesheet"])
                 ])
             ])
         ], width=8),

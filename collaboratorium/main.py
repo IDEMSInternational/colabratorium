@@ -11,22 +11,19 @@ from dash import Dash, html, dcc, Input, Output, State, ctx
 import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
 from pydbml import PyDBML
-import yaml
 
 from form_gen import generate_form_layout, register_callbacks
 from visual_customization import stylesheet, title, NODE_TABLES
 from db import build_elements_from_db, init_db, db_connect
 from analytics import analytics_log
 from analytics import init_db as analytics_init_db
+from config_parser import load_config
 
 
 # ---------------------------------------------------------
 # Config Load
 # ---------------------------------------------------------
-with open("config.yaml", "r") as f:
-    config = yaml.safe_load(f)
-
-tables_config = config.get("tables", {})
+config = load_config("config.yaml")
 forms_config = config.get("forms", {})
 
 # ---------------------------------------------------------
@@ -34,7 +31,7 @@ forms_config = config.get("forms", {})
 # ---------------------------------------------------------
 with open("schema.dbml") as f:
     dbml = PyDBML(f)
-init_db()
+init_db(config)
 analytics_init_db()
 
 
@@ -359,7 +356,7 @@ def show_edge_form(tap_edge, person_id):
 @app.callback(Output('people-filter', 'options'), Input('intermediary-loaded', 'data'))
 def populate_people_filter(_):
     try:
-        elements = build_elements_from_db(include_deleted=False, node_types=['people'])
+        elements = login_required(build_elements_from_db)(config, include_deleted=False, node_types=['people'])
         nodes = [e for e in elements if 'source' not in e.get('data', {}) and e.get('data', {}).get('type') == 'people']
         return [{'label': n['data'].get('label'), 'value': n['data'].get('id')} for n in nodes]
     except Exception:
@@ -382,6 +379,7 @@ def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree
 
     # Build elements directly from the authoritative DB using the active filters
     elements = login_required(build_elements_from_db)(
+        config,
         include_deleted=include_deleted,
         node_types=selected_types,
         people_selected=people_selected,

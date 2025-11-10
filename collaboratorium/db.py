@@ -11,6 +11,7 @@ from visual_customization import NODE_TABLES
 DB = 'database.db'
 DBML_FILE = 'schema.dbml'
 
+
 # Load the DBML schema once at the module level
 try:
     with open(DBML_FILE) as f:
@@ -46,7 +47,7 @@ def _dbml_to_sqlite_type(col_type: str) -> str:
     return 'TEXT'
 
 
-def init_db(tables_config):
+def init_db(config):
     """
     Create the database schema dynamically from the config file.
     """
@@ -61,7 +62,7 @@ def init_db(tables_config):
 
     print("Initializing database schema from config YAML...")
     # Dynamically create tables from config
-    for table_name, table in tables_config.items():
+    for table_name, table in config["tables"].items():
         col_defs = []
         has_id = False
         has_version = False
@@ -230,7 +231,7 @@ def get_dropdown_options(table_name, value_column, label_column):
         return None
 
 
-def build_elements_from_db(include_deleted: bool = False, node_types: list | None = None, people_selected: list | None = None, degree: int = None):
+def build_elements_from_db(config, include_deleted: bool = False, node_types: list | None = None, people_selected: list | None = None, degree: int = None):
     """
     Build Cytoscape-style elements (nodes + edges) dynamically from the DBML schema.
     
@@ -257,18 +258,6 @@ def build_elements_from_db(include_deleted: bool = False, node_types: list | Non
         if 'id' in df.columns and 'version' in df.columns:
             df = df.sort_values(['id', 'version']).groupby('id', as_index=False).last()
         return df
-
-    # Build the FK map first for easy lookup
-    fk_map = {}  # (child_table, child_col) -> (parent_table, parent_col)
-    try:
-        for ref in dbml.refs:
-            col1 = ref.col1[0]
-            col2 = ref.col2[0]
-            child = (col1.table.name, col1.name)
-            parent = (col2.table.name, col2.name)
-            fk_map[child] = parent
-    except Exception as e:
-        print(f"[WARN] Could not build FK map: {e}")
 
     # Load ALL tables into dataframes. Filtering happens in memory.
     dataframes = {}
@@ -383,14 +372,14 @@ def build_elements_from_db(include_deleted: bool = False, node_types: list | Non
                 # Find the *other* FK on this link table
                 other_fk_col = None
                 for col in child_table.columns:
-                    if col.name != child_col_name and (child_table.name, col.name) in fk_map:
+                    if col.name != child_col_name and (child_table.name, col.name) in config.fk_map:
                         other_fk_col = col
                         break
                 
                 if not other_fk_col: continue
                 if child_col_name > other_fk_col.name: continue # Process each link table only once
 
-                other_parent_table_name = fk_map[(child_table.name, other_fk_col.name)][0]
+                other_parent_table_name = config.fk_map[(child_table.name, other_fk_col.name)][0]
                 
                 # Handle self-referencing tables
                 if child_table.name == 'initiative_initiative_links':

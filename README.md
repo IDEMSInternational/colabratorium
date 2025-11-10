@@ -17,3 +17,6 @@ For local testing, run `python ./collaboratorium/main.py`
 For running in Docker, use the standard `docker compose build` then `docker compose up`
 
 For Auth, register the app in Google Cloud Console and set the redirect URI to `{site_url}/auth/callback`
+
+## Setting up a config.yaml from DBML schema
+The config gen script can produce a rough config, but work needs to be done to better handle links, I needed to manually add the links for non-link-tables. Some customization to types and appearance eg. using email fields instead of strings can be done in the forms confi

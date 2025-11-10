@@ -17,22 +17,6 @@ def _get_max_id_from_cursor(cur, table_name):
 
 
 # ==============================================================
-# DBML STRUCTURE PARSING
-# ==============================================================
-
-def build_reference_index(dbml):
-    """Build mappings of foreign key relationships."""
-    fk_map = {}  # (child_table, child_column) -> (parent_table, parent_column)
-    for ref in dbml.refs:
-        col1 = ref.col1[0]
-        col2 = ref.col2[0]
-        child = (col1.table.name, col1.name)
-        parent = (col2.table.name, col2.name)
-        fk_map[child] = parent
-    return fk_map
-
-
-# ==============================================================
 # COMPONENT FACTORY
 # ==============================================================
 

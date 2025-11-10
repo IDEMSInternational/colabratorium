@@ -236,6 +236,27 @@ tables:
       status: string
       created_by: integer
 links:
+  initiatives:
+    mappings:
+    - link_col: responsible_person
+      target_table: people
+      target_col: id
+  organisations:
+    mappings:
+    - link_col: contact_person
+      target_table: people
+      target_col: id
+  contracts:
+    mappings:
+    - link_col: organisation_person
+      target_table: people
+      target_col: id
+    - link_col: responsible_person
+      target_table: people
+      target_col: id
+    - link_col: organisation
+      target_table: organisations
+      target_col: id
   activity_activity_links:
     mappings:
     - link_col: parent_id

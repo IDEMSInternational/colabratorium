@@ -8,7 +8,7 @@ node_tables:
 - tags
 network_vis:
   layout:
-    name: cose
+    name: cose-bilkent
   stylesheet:
   - selector: node
     style:

@@ -146,6 +146,7 @@ def get_person_id_for_user(user):
 # ---------------------------------------------------------
 # Dash app setup
 # ---------------------------------------------------------
+cyto.load_extra_layouts()
 app = Dash(
     config["title"],
     title=config["title"],

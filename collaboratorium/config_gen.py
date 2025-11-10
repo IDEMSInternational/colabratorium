@@ -408,6 +408,15 @@ def build_config(db):
     links_info = discover_link_tables(db)
     fk_map = collect_foreign_keys(db)
 
+    # populate links section
+    for link_table_name, info in links_info.items():
+        config["links"][link_table_name] = {
+            "mappings": [
+                {"link_col": m["link_col"], "target_table": m["target_table"], "target_col": m["target_col"]}
+                for m in info.get("mappings", [])
+            ]
+        }
+
     # build tables and forms
     for table in db.tables:
         fields = {}

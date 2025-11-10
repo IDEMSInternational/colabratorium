@@ -235,6 +235,63 @@ tables:
       timestamp: timestamp
       status: string
       created_by: integer
+links:
+  activity_activity_links:
+    mappings:
+    - link_col: parent_id
+      target_table: activities
+      target_col: id
+    - link_col: child_id
+      target_table: activities
+      target_col: id
+  initiative_initiative_links:
+    mappings:
+    - link_col: parent_id
+      target_table: initiatives
+      target_col: id
+    - link_col: child_id
+      target_table: initiatives
+      target_col: id
+  activity_initiative_links:
+    mappings:
+    - link_col: activity_id
+      target_table: activities
+      target_col: id
+    - link_col: initiative_id
+      target_table: initiatives
+      target_col: id
+  activity_contract_links:
+    mappings:
+    - link_col: activity_id
+      target_table: activities
+      target_col: id
+    - link_col: contract_id
+      target_table: contracts
+      target_col: id
+  contract_initiative_links:
+    mappings:
+    - link_col: contract_id
+      target_table: contracts
+      target_col: id
+    - link_col: initiative_id
+      target_table: initiatives
+      target_col: id
+  organisation_people_links:
+    mappings:
+    - link_col: organisation_id
+      target_table: organisations
+      target_col: id
+    - link_col: person_id
+      target_table: people
+      target_col: id
+  activity_people_links:
+    mappings:
+    - link_col: activity_id
+      target_table: activities
+      target_col: id
+    - link_col: person_id
+      target_table: people
+      target_col: id
 forms:
   initiatives_form:
     label: Initiatives

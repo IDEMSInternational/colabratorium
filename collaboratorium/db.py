@@ -91,43 +91,6 @@ def init_db():
 
     conn.commit()
     print("Database schema initialized.")
-
-    # Seed data if the DB was just created
-    if not existed:
-        print("Seeding database...")
-        try:
-            # Seed data (same as your original file)
-            now = _now_utc_iso()
-            cur.execute('INSERT INTO people (id, version, name, role, email, active, timestamp, tags, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        (1, 1, 'Alice', 'Data Scientist', 'alice@example.com', 1, now, json.dumps(['datascience']), 'active', 1))
-            cur.execute('INSERT INTO people (id, version, name, role, email, active, timestamp, tags, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        (2, 1, 'Bob', 'Project Manager', 'bob@example.com', 1, now, json.dumps(['pm']), 'active', 1))
-
-            cur.execute('INSERT INTO organisations (id, version, timestamp, name, description, location, contact_person, tags, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        (1, 1, now, 'Data Org', 'Org for data work', 'Remote', 1, json.dumps(['research']), 'active', 1))
-
-            cur.execute('INSERT INTO initiatives (id, version, name, description, responsible_person, timestamp, tags, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        (1, 1, 'Project Phoenix', 'Rebuild the data pipeline', 2, now, json.dumps(['infra']), 'active', 1))
-
-            cur.execute('INSERT INTO activities (id, version, timestamp, name, description, location, start_date, end_date, tags, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        (1, 1, now, 'Q1 Research', 'Research for Phoenix', 'Remote', '2025-01-15', '2025-03-31', json.dumps(['research']), 'active', 1))
-
-            cur.execute('INSERT INTO contracts (id, version, timestamp, name, description, organisation, organisation_person, responsible_person, start_date, end_date, tags, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        (1, 1, now, 'Phoenix Contract', 'Contract for Phoenix work', 1, 1, 2, '2025-01-01', '2025-12-31', json.dumps(['contract']), 'active', 1))
-
-            # links
-            cur.execute('INSERT INTO organisation_people_links (id, version, timestamp, status, organisation_id, person_id, type, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (1, 1, now, 'active', 1, 1, 'member', 1))
-            cur.execute('INSERT INTO activity_people_links (id, version, timestamp, status, activity_id, person_id, type, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (1, 1, now, 'active', 1, 1, 'reporter', 1))
-            cur.execute('INSERT INTO activity_initiative_links (id, version, timestamp, status, activity_id, initiative_id, type, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (1, 1, now, 'active', 1, 1, 'part of', 1))
-            cur.execute('INSERT INTO initiative_initiative_links (id, version, timestamp, status, parent_id, child_id, type, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (1, 1, now, 'active', 1, 1, 'parent', 1))
-            cur.execute('INSERT INTO activity_contract_links (id, version, timestamp, status, activity_id, contract_id, type, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (1, 1, now, 'active', 1, 1, 'covered by', 1))
-            cur.execute('INSERT INTO contract_initiative_links (id, version, timestamp, status, contract_id, initiative_id, type, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (1, 1, now, 'active', 1, 1, 'related to', 1))
-
-            conn.commit()
-            print("Database seeded.")
-        except Exception as e:
-            print(f"Error seeding database: {e}")
-            conn.rollback()
     
     conn.close()
 
@@ -364,6 +327,8 @@ def build_elements_from_db(include_deleted: bool = False, node_types: list | Non
             
             # Don't add edges if the source/target node doesn't exist
             if src_id not in existing_node_ids or tgt_id not in existing_node_ids:
+                return None
+            if label == "created by":
                 return None
                 
             # Create a unique edge ID

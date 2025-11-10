@@ -372,8 +372,8 @@ def generate_elements_for_table(table, db, fk_map, links_info):
                     },
                     "store": {
                         "link_table": link_table_name,
-                        "source_field": m1.get("link_col"),
-                        "target_field": m2.get("link_col"),
+                        "source_field": m2.get("link_col"),
+                        "target_field": m1.get("link_col"),
                         "orientation": "self"
                     }
                 }
@@ -390,8 +390,8 @@ def generate_elements_for_table(table, db, fk_map, links_info):
                     },
                     "store": {
                         "link_table": link_table_name,
-                        "source_field": m2.get("link_col"),
-                        "target_field": m1.get("link_col"),
+                        "source_field": m1.get("link_col"),
+                        "target_field": m2.get("link_col"),
                         "orientation": "self"
                     }
                 }

@@ -328,8 +328,8 @@ forms:
           label_column: name
         store:
           link_table: initiative_initiative_links
-          source_field: parent_id
-          target_field: child_id
+          source_field: child_id
+          target_field: parent_id
           orientation: self
       children:
         type: select_multiple
@@ -341,8 +341,8 @@ forms:
           label_column: name
         store:
           link_table: initiative_initiative_links
-          source_field: child_id
-          target_field: parent_id
+          source_field: parent_id
+          target_field: child_id
           orientation: self
       activities_links:
         type: select_multiple
@@ -526,8 +526,8 @@ forms:
           label_column: name
         store:
           link_table: activity_activity_links
-          source_field: parent_id
-          target_field: child_id
+          source_field: child_id
+          target_field: parent_id
           orientation: self
       children:
         type: select_multiple
@@ -539,8 +539,8 @@ forms:
           label_column: name
         store:
           link_table: activity_activity_links
-          source_field: child_id
-          target_field: parent_id
+          source_field: parent_id
+          target_field: child_id
           orientation: self
       initiatives_links:
         type: select_multiple

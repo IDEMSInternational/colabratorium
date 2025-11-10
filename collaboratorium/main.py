@@ -10,7 +10,6 @@ from datetime import datetime
 from dash import Dash, html, dcc, Input, Output, State, ctx
 import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
-from pydbml import PyDBML
 
 from form_gen import generate_form_layout, register_callbacks
 from visual_customization import stylesheet, title, NODE_TABLES
@@ -29,11 +28,8 @@ forms_config = config.get("forms", {})
 # ---------------------------------------------------------
 # Database initialization
 # ---------------------------------------------------------
-with open("schema.dbml") as f:
-    dbml = PyDBML(f)
 init_db(config)
 analytics_init_db()
-
 
 # ---------------------------------------------------------
 # Flask + OAuth setup
@@ -200,7 +196,7 @@ app.layout = dbc.Container([
                         html.H2("Tables"),
                         dcc.Dropdown(
                             id="table-selector",
-                            options=[{"label": t.name, "value": t.name} for t in dbml.tables],
+                            options=[{"label": t, "value": t} for t in config["tables"].keys()],
                         ),
                         html.Div(id="form-container"),
                         html.Div(id="out_msg", children=[]),
@@ -335,7 +331,7 @@ def show_node_form(tap_node, person_id):
         return html.Div("Invalid node clicked.")
     form_name = config["default_forms"].get(table_name, None)
     if not form_name:
-        return html.Div(f"Error: Table '{table_name}' not in DBML.")
+        return html.Div(f"Error: Table '{table_name}' not in config['default_forms'].")
     
     analytics_log(person_id, table_name, object_id)
     return login_required(generate_form_layout)(form_name, forms_config=forms_config, object_id=object_id)
@@ -349,7 +345,7 @@ def show_edge_form(tap_edge, person_id):
         return html.P(f"This edge ({tap_edge.get('label')}) is not editable.")
     form_name = config["default_forms"].get(table_name, None)
     if not form_name:
-        return html.Div(f"Error: Table '{table_name}' not in DBML.")
+        return html.Div(f"Error: Table '{table_name}' not in config['default_forms'].")
     return login_required(generate_form_layout)(form_name, forms_config=forms_config, object_id=object_id)
 
 

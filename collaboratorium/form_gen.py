@@ -121,57 +121,6 @@ def component_for_element(element_config, form_name, value=None):
     return html.Div([html.Label(label), html.Div("Unsupported element type")])
 
 
-def _create_link_dropdown(fields_list, conn, dbml, link_table, source_col, target_col, target_table, object_id=None, label_prefix=None):
-    """Helper function to create and append a multi-select dropdown for a linked entity."""
-    # ensure column names are strings
-    if hasattr(source_col, "name"):
-        source_col = source_col.name
-    if hasattr(target_col, "name"):
-        target_col = target_col.name
-
-    options = get_dropdown_options(conn, target_table, dbml=dbml)
-    if object_id is not None:
-        options = [opt for opt in options if opt['value'] != object_id]
-
-    cur = conn.cursor()
-    sql_query = f'''
-    WITH RankedRow AS (
-        -- 1. Find all rows for this ID and rank them
-        --    (highest version gets rn = 1)
-        SELECT
-            "{target_col}",
-            "status",
-            -- 1. Group rows by the link id
-            --    and rank them by version, newest = 1.
-            ROW_NUMBER() OVER(PARTITION BY id ORDER BY "version" DESC) as rn
-        FROM "{link_table}"
-        WHERE "{source_col}" = ?
-    )
-    -- 2. Select the top-ranked row (rn = 1)
-    --    only if its status is not 'deleted'
-    SELECT "{target_col}"
-    FROM RankedRow
-    WHERE rn = 1 AND "status" != 'deleted'
-    '''
-    cur.execute(sql_query, (object_id,))
-    current_values = [row[0] for row in cur.fetchall()]
-
-    label = label_prefix if label_prefix else f"Linked {target_table}"
-
-    dropdown = dcc.Dropdown(
-        id={"type": "link-input", "table": link_table, "source_col": source_col, "target_col": target_col},
-        options=options,
-        value=current_values,
-        multi=True,
-        placeholder=f"Select {label}...",
-    )
-    
-    fields_list.append(html.Div([
-        html.Label(label, style={"fontWeight": "bold"}),
-        dropdown
-    ], style={"marginBottom": "8px"}))
-
-
 # ==============================================================
 # FORM LAYOUT GENERATION
 # ==============================================================
@@ -216,7 +165,7 @@ def generate_form_layout(form_name, forms_config, object_id=None):
 # ==============================================================
 
 def register_callbacks(app, forms_config):
-    """Register one submit callback per table in the DBML schema."""
+    """Register one submit callback per form in the config."""
     for form_name, fc in forms_config.items():
         input_ids = [{"type": "input", "form": form_name, "element": e_id} for e_id in fc["elements"].keys()]
         state_args = [State(i, ("date" if "date" in i["element"] else "value")) for i in input_ids]

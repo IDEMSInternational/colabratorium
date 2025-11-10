@@ -46,10 +46,9 @@ def _dbml_to_sqlite_type(col_type: str) -> str:
     return 'TEXT'
 
 
-def init_db():
+def init_db(tables_config):
     """
-    Create the database schema dynamically from the DBML file.
-    Optionally seeds default data.
+    Create the database schema dynamically from the config file.
     """
     existed = os.path.exists(DB)
     
@@ -57,25 +56,22 @@ def init_db():
         print("Database already exists. Skipping initialization.")
         return
 
-    if dbml is None:
-        raise RuntimeError(f"DBML file not found or failed to parse at {DBML_FILE}. Cannot initialize DB.")
-
     conn = db_connect()
     cur = conn.cursor()
 
-    print("Initializing database schema from DBML...")
-    # Dynamically create tables from DBML
-    for table in dbml.tables:
+    print("Initializing database schema from config YAML...")
+    # Dynamically create tables from config
+    for table_name, table in tables_config.items():
         col_defs = []
         has_id = False
         has_version = False
         
-        for col in table.columns:
+        for col_name, col_type in table['fields'].items():
             # Use quotes to handle all table/column names
-            col_defs.append(f'"{col.name}" {_dbml_to_sqlite_type(col.type)}')
-            if col.name == 'id':
+            col_defs.append(f'"{col_name}" {_dbml_to_sqlite_type(col_type)}')
+            if col_name == 'id':
                 has_id = True
-            if col.name == 'version':
+            if col_name == 'version':
                 has_version = True
         
         # Add composite primary key for versioned tables
@@ -83,11 +79,11 @@ def init_db():
         if has_id and has_version:
             col_defs.append("PRIMARY KEY (id, version)")
         
-        sql = f'CREATE TABLE IF NOT EXISTS "{table.name}" ({", ".join(col_defs)})'
+        sql = f'CREATE TABLE IF NOT EXISTS "{table_name}" ({", ".join(col_defs)})'
         try:
             cur.execute(sql)
         except Exception as e:
-            print(f"Failed to create table {table.name}: {e}\nSQL: {sql}")
+            print(f"Failed to create table {table_name}: {e}\nSQL: {sql}")
 
     conn.commit()
     print("Database schema initialized.")

@@ -18,6 +18,7 @@ services:
 
   collaboratorium:
     build: .
+    pull_policy: build
     image: collaboratorium:latest
     ports:
       - "8050:8050"

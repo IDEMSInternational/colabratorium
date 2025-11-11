@@ -12,4 +12,5 @@ COPY collaboratorium/ /app/collaboratorium/
 
 EXPOSE 8050
 
-ENTRYPOINT ["python", "./collaboratorium/main.py"]
+# ENTRYPOINT ["python", "./collaboratorium/main.py"]
+ENTRYPOINT ["python"]

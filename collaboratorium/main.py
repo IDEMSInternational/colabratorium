@@ -21,7 +21,9 @@ from config_parser import load_config
 # ---------------------------------------------------------
 # Config Load
 # ---------------------------------------------------------
-config = load_config("config.yaml")
+load_dotenv()
+
+config = load_config(os.environ.get("CONFIG_PATH"))
 forms_config = config.get("forms", {})
 
 # ---------------------------------------------------------
@@ -34,7 +36,6 @@ analytics_init_db()
 # Flask + OAuth setup
 # ---------------------------------------------------------
 
-load_dotenv()
 server = Flask(__name__)
 server.secret_key = os.environ.get("SECRET_KEY")
 server.config["SESSION_TYPE"] = "filesystem"

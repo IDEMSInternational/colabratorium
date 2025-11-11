@@ -24,11 +24,11 @@ services:
       - "8050:8050"
     volumes:
       # Bind-mount the host database file into the container so data persists
-      - ./database.db:/app/database.db
-      - ./analytics.db:/app/analytics.db
+      - ${APP_DATA_DIR}/database.db:/app/database.db
+      - ${APP_DATA_DIR}/analytics.db:/app/analytics.db
       # Also mount config so container and host share the same config file
-      - ./config.yaml:/app/config.yaml:ro
-      - ./.env:/app/.env
+      - ${APP_DATA_DIR}/config.yaml:/app/config.yaml:ro
+      - ${APP_DATA_DIR}/.env:/app/.env
     restart: unless-stopped
 
 volumes:

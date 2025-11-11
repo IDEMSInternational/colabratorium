@@ -1,3 +1,4 @@
+import requests
 import yaml
 
 
@@ -17,9 +18,31 @@ class Config(dict):
                 fk_map[child] = parent
         return fk_map
 
+
+def get_config_content(source: str) -> str:
+    """
+    Fetches config content from a local path or an HTTP/HTTPS URL.
+    """
+    if source.startswith('http://') or source.startswith('https://'):
+        try:
+            response = requests.get(source)
+            response.raise_for_status()  # Raise an error for bad status codes
+            return response.text
+        except requests.RequestException as e:
+            print(f"Error fetching config from URL: {e}")
+            raise
+    else:
+        try:
+            with open(source, 'r') as f:
+                return f.read()
+        except FileNotFoundError as e:
+            print(f"Error reading config from file: {e}")
+            raise
+
+
 def load_config(filepath):
-    with open(filepath, "r") as f:
-        config = Config(yaml.safe_load(f))
+    config_content = get_config_content(filepath)
+    config = Config(yaml.safe_load(config_content))
     
     return config
 

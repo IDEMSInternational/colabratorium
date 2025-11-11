@@ -19,6 +19,7 @@ services:
   collaboratorium:
     build: .
     pull_policy: build
+    stdin_open: true
     tty: true
     image: collaboratorium:latest
     ports:

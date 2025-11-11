@@ -22,6 +22,9 @@ services:
     stdin_open: true
     tty: true
     image: collaboratorium:latest
+    env_file:
+      - stack.env
+      - .env
     ports:
       - "8050:8050"
     volumes:
@@ -30,7 +33,6 @@ services:
       - ${APP_DATA_DIR}/analytics.db:/app/analytics.db
       # Also mount config so container and host share the same config file
       - ${APP_DATA_DIR}/config.yaml:/app/config.yaml:ro
-      - ${APP_DATA_DIR}/.env:/app/.env
     restart: unless-stopped
 
 volumes:

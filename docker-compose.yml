@@ -23,8 +23,10 @@ services:
     tty: true
     image: collaboratorium:latest
     env_file:
-      - stack.env
-      - .env
+      - path: stack.env
+        required: false
+      - path: .env
+        required: false
     ports:
       - "8050:8050"
     volumes:

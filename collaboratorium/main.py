@@ -22,8 +22,12 @@ from config_parser import load_config
 # Config Load
 # ---------------------------------------------------------
 load_dotenv()
+filepath = os.environ.get("CONFIG_PATH")
+if filepath is None:
+    print("No CONFIG_PATH env variable found, using config.yaml")
+    filepath = "config.yaml"
 
-config = load_config(os.environ.get("CONFIG_PATH"))
+config = load_config(filepath)
 forms_config = config.get("forms", {})
 
 # ---------------------------------------------------------

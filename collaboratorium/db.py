@@ -216,7 +216,13 @@ def get_dropdown_options(table_name, value_column, label_column):
         return None
 
 
-def build_elements_from_db(config, include_deleted: bool = False, node_types: list | None = None, people_selected: list | None = None, degree: int | None = None):
+def build_elements_from_db(config,
+                           include_deleted: bool = False,
+                           node_types: list | None = None,
+                           people_selected: list | None = None,
+                           degree: int | None = None,
+                           degree_types: list | None = None
+                           ):
     """
     Build Cytoscape-style elements (nodes + edges) dynamically from the config.
     
@@ -394,20 +400,41 @@ def build_elements_from_db(config, include_deleted: bool = False, node_types: li
     
     final_elements = all_elements
     
+    def custom_ego_graph(graph, queue, radius, degree_types):
+        visited = set()
+        # queue = [(ego_node, 0)]  # (node, distance)
+        subgraph_nodes = set()
+
+        while queue:
+            current_node, current_distance = queue.pop(0)
+
+            if current_node in visited or current_distance > radius:
+                continue
+
+            visited.add(current_node)
+            subgraph_nodes.add(current_node)
+
+            if graph.nodes[current_node].get("classes") in degree_types or current_distance == 0:
+                for neighbor in graph.neighbors(current_node):
+                    queue.append((neighbor, current_distance + 1))
+
+        return graph.subgraph(subgraph_nodes)
+
+
     if people_selected and degree is not None:
+        start_nodes = people_selected
         G = nx.Graph()
         for node in all_nodes:
-            G.add_node(node['data']['id'])
+            G.add_node(node['data']['id'], **node)
         for edge in all_edges:
             G.add_edge(edge['data']['source'], edge['data']['target'])
 
         nodes_to_keep = set()
-        start_nodes = [pid for pid in people_selected if G.has_node(pid)]
 
-        for start_node in start_nodes:
-            # ego_graph finds all nodes within 'radius' (degree)
-            neighbors_graph = nx.ego_graph(G, start_node, radius=degree)
-            nodes_to_keep.update(neighbors_graph.nodes())
+        queue = [(node, 0) for node in start_nodes]
+
+        neighbors_graph = custom_ego_graph(G, queue, radius=degree, degree_types=degree_types)
+        nodes_to_keep.update(neighbors_graph.nodes())
         
         # Filter the elements based on the graph traversal
         nodes = [n for n in all_nodes if n['data']['id'] in nodes_to_keep]

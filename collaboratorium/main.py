@@ -180,8 +180,8 @@ app.layout = dbc.Container([
                                   value=config["node_tables"],
                                   inline=True),
                     dcc.Dropdown(id='people-filter', multi=True, placeholder='Filter by people...'),
-                    # dbc.Checklist(id='show-deleted', options=[{'label': 'Show deleted', 'value': 'show'}],
-                    #               value=[], inline=True),
+                    dbc.Checklist(id='show-deleted', options=[{'label': 'Show deleted', 'value': 'show'}],
+                                  value=[], inline=True, style={'display': 'none'}),
                     dcc.Slider(id='degree-filter', min=1, max=5, step=1, value=1),
                     dcc.Checklist(id='node-type-degree-filter',
                                   options=[{'label': t, 'value': t} for t in

@@ -180,9 +180,14 @@ app.layout = dbc.Container([
                                   value=config["node_tables"],
                                   inline=True),
                     dcc.Dropdown(id='people-filter', multi=True, placeholder='Filter by people...'),
-                    dbc.Checklist(id='show-deleted', options=[{'label': 'Show deleted', 'value': 'show'}],
-                                  value=[], inline=True),
+                    # dbc.Checklist(id='show-deleted', options=[{'label': 'Show deleted', 'value': 'show'}],
+                    #               value=[], inline=True),
                     dcc.Slider(id='degree-filter', min=1, max=5, step=1, value=1),
+                    dcc.Checklist(id='node-type-degree-filter',
+                                  options=[{'label': t, 'value': t} for t in
+                                           config["node_tables"]],
+                                  value=config["node_tables"],
+                                  inline=True),
                     cyto.Cytoscape(id='cyto', elements=[], style={'width': '100%', 'height': '600px'},
                                    layout=config["network_vis"]["layout"], stylesheet=config["network_vis"]["stylesheet"])
                 ])
@@ -352,8 +357,8 @@ def show_edge_form(tap_edge, person_id):
 @app.callback(Output('people-filter', 'options'), Input('intermediary-loaded', 'data'))
 def populate_people_filter(_):
     try:
-        elements = login_required(build_elements_from_db)(config, include_deleted=False, node_types=['people'])
-        nodes = [e for e in elements if 'source' not in e.get('data', {}) and e.get('data', {}).get('type') == 'people']
+        elements = login_required(build_elements_from_db)(config, include_deleted=False, node_types=['people', 'initiatives'])
+        nodes = [e for e in elements if 'source' not in e.get('data', {}) and e.get('data', {}).get('type') in ['people', 'initiatives']]
         return [{'label': n['data'].get('label'), 'value': n['data'].get('id')} for n in nodes]
     except Exception:
         return []
@@ -369,8 +374,9 @@ register_callbacks(app, forms_config)
     Input('people-filter', 'value'),
     Input('show-deleted', 'value'),
     Input('degree-filter', 'value'),
+    Input('node-type-degree-filter', 'value'),
 )
-def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree):
+def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree, degree_types):
     include_deleted = bool(show_deleted and 'show' in show_deleted)
 
     # Build elements directly from the authoritative DB using the active filters
@@ -380,6 +386,7 @@ def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree
         node_types=selected_types,
         people_selected=people_selected,
         degree=degree,
+        degree_types=degree_types
     )
     return elements or []
 

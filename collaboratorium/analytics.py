@@ -8,11 +8,10 @@ def analytics_connect():
     return sqlite3.connect(DB)
 
 def init_db():
-    """
-    Create the database schema dynamically from the DBML file.
-    Optionally seeds default data.
-    """
     existed = os.path.exists(DB)
+
+    if existed:
+        return
     
     conn = analytics_connect()
     cur = conn.cursor()

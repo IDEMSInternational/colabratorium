@@ -477,3 +477,33 @@ def get_max_version(table_name: str, object_id: int):
         return int(r[0]) if r and r[0] is not None else 0
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------
+# Auth helpers for integration
+# ---------------------------------------------------------
+def get_person_id_for_user(user):
+    """Map the logged-in user to a person.id in the DB, creating if missing."""
+    if not user or not user.get("email"):
+        return None
+
+    conn = db_connect()
+    cur = conn.cursor()
+    # Try to find a person with this email
+    cur.execute("SELECT id FROM people WHERE email = ? AND status != 'deleted' ORDER BY version DESC LIMIT 1", (user["email"],))
+    row = cur.fetchone()
+    if row:
+        return row[0]
+
+    # Create a new record if not found
+    cur.execute("SELECT MAX(id) FROM people")
+    max_id = cur.fetchone()[0] or 0
+    new_id = max_id + 1
+    now = datetime.now().isoformat()
+    cur.execute(
+        'INSERT INTO people (id, name, email, status, version, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
+        (new_id, user.get("name", user["email"]), user["email"], "active", 1, now)
+    )
+    conn.commit()
+    conn.close()
+    return new_id

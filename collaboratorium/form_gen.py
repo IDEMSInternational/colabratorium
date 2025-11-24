@@ -2,6 +2,8 @@ from dash import html, dcc, Input, Output, State, ctx, ALL, no_update, MATCH
 from datetime import datetime
 from db import db_connect, get_latest_entry, get_dropdown_options
 from visual_customization import dcl
+from analytics import analytics_log
+from auth import login_required
 
 
 # ==============================================================
@@ -176,7 +178,126 @@ def generate_form_layout(form_name, forms_config, object_id=None):
 # CALLBACK REGISTRATION
 # ==============================================================
 
-def register_callbacks(app, forms_config):
+def register_form_callbacks(app, config):
+    register_click_callbacks(app, config)
+    register_submit_callbacks(app, config.get("forms", {}))
+
+def register_click_callbacks(app, config):
+    forms_config = config.get("forms", {})
+
+    @app.callback(
+        Output("form-container", "children"),
+        Input("table-selector", "value"),
+        Input('cyto', 'tapNodeData'),
+        Input('cyto', 'tapEdgeData'),
+        State("current-person-id", "data"),
+        Input("form-refresh", "data"),
+    )
+    def load_form(table_name, tap_node, tap_edge, person_id, refresh_signal):
+        """
+        Display either:
+        - add form (when table-selector triggered),
+        - node form (when cyto tapNode triggered),
+        - edge form (when cyto tapEdge triggered).
+
+        Uses ctx.triggered to prefer the *actual* trigger rather than just presence of table_name.
+        """
+        # determine which input actually triggered this callback
+        trigger = None
+        if ctx.triggered:
+            # ctx.triggered is a list like [{'prop_id': 'table-selector.value', 'value': ...}]
+            trigger = ctx.triggered[0].get('prop_id', '')
+        
+        if trigger == "form-refresh.data":
+            return html.Div("Select a table or click a node/edge in the graph.")
+
+        # If the table selector is the trigger, show the add form (explicit user choice)
+        if trigger and trigger.startswith("table-selector"):
+            if table_name:
+                return show_add_form(table_name, person_id)
+            return "Select a table"
+
+        # If cyto's tapEdgeData triggered, prefer edge form
+        if trigger and "cyto.tapEdgeData" in trigger:
+            if tap_edge:
+                # pick edge if it has editable table info
+                return show_edge_form(tap_edge, person_id)
+
+        # If cyto's tapNodeData triggered, prefer node form
+        if trigger and "cyto.tapNodeData" in trigger:
+            if tap_node:
+                return show_node_form(tap_node, person_id)
+
+        # No explicit trigger (initial or programmatic call).
+        # Fall back to previous behavior but prefer node/edge when both present.
+        if table_name and not (tap_node or tap_edge):
+            return show_add_form(table_name, person_id)
+
+        # Helper to decide which of node/edge is the most recent when both are present
+        def _is_node_newer(n, e):
+            try:
+                nt = int(n.get('timeStamp')) if n and n.get('timeStamp') is not None else None
+            except Exception:
+                nt = None
+            try:
+                et = int(e.get('timeStamp')) if e and e.get('timeStamp') is not None else None
+            except Exception:
+                et = None
+            if nt is None and et is None:
+                return False
+            if nt is None:
+                return False
+            if et is None:
+                return True
+            return nt >= et
+
+        # If an edge exists and is newer than the node, show edge form
+        if tap_edge:
+            if not tap_node or _is_node_newer(tap_edge, tap_node):
+                return show_edge_form(tap_edge, person_id)
+
+        if tap_node:
+            if not tap_edge or _is_node_newer(tap_node, tap_edge):
+                return show_node_form(tap_node, person_id)
+
+        # If nothing else, show a helpful message
+        return html.Div("Select a table or click a node/edge in the graph.")
+
+
+    def show_add_form(table_name, person_id):
+        if not table_name:
+            return "Select a table"
+        form_name = config["default_forms"][table_name]
+        return login_required(generate_form_layout)(form_name, forms_config=forms_config)
+
+
+    def show_node_form(tap_node, person_id):
+        try:
+            table_name, id_str = tap_node['id'].split('-', 1)
+            object_id = int(id_str)
+        except (ValueError, TypeError):
+            return html.Div("Invalid node clicked.")
+        form_name = config["default_forms"].get(table_name, None)
+        if not form_name:
+            return html.Div(f"Error: Table '{table_name}' not in config['default_forms'].")
+        
+        analytics_log(person_id, table_name, object_id)
+        return login_required(generate_form_layout)(form_name, forms_config=forms_config, object_id=object_id)
+
+
+    def show_edge_form(tap_edge, person_id):
+        table_name = tap_edge.get('table_name')
+        object_id = tap_edge.get('object_id')
+        analytics_log(person_id, table_name, object_id)
+        if not table_name or object_id is None:
+            return html.P(f"This edge ({tap_edge.get('label')}) is not editable.")
+        form_name = config["default_forms"].get(table_name, None)
+        if not form_name:
+            return html.Div(f"Error: Table '{table_name}' not in config['default_forms'].")
+        return login_required(generate_form_layout)(form_name, forms_config=forms_config, object_id=object_id)
+
+
+def register_submit_callbacks(app, forms_config):
     """Register one submit callback per form in the config."""
     for form_name, fc in forms_config.items():
         input_ids = [{"type": "input", "form": form_name, "element": e_id} for e_id in fc["elements"].keys()]

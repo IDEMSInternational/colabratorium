@@ -60,6 +60,20 @@ network_vis:
       shape: ellipse
       text-wrap: wrap
       text-max-width: 60px
+view_config:
+  selector: dropdown
+views:
+  degree:
+    name: Degree View
+    default_layout: cose-bilkent
+  ancestor:
+    name: Ancestor Graph
+    default_layout: dagre
+  child:
+    name: Child Graph
+    default_layout: dagre
+  
+
 tables:
   initiatives:
     fields:

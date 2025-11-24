@@ -14,6 +14,7 @@ from db import build_elements_from_db, init_db, db_connect
 from analytics import init_db as analytics_init_db
 from config_parser import load_config
 
+from view_gen import register_view_callbacks
 
 # ---------------------------------------------------------
 # Config Load
@@ -56,42 +57,7 @@ app.layout = dbc.Container([
 
     dbc.Row([
         dbc.Col([
-            dbc.Card([
-                dbc.CardHeader([
-                    html.Button('Degree Graph', id='view-degree', n_clicks=0),
-                    html.Button('Ancestor Graph', id='view-anscestor', n_clicks=0),
-                    html.Button('Child Graph', id='view-child', n_clicks=0),
-                    dcc.Dropdown(
-                        id='layout-selector',
-                        options=[
-                            'cose-bilkent', 'klay', 'dagre', 'cola', 'spread', 'cose',
-                            'breadthfirst', 'concentric', 'grid', 'circle', 'random',
-                        ],
-                        placeholder='Layout Algorithm...',
-                        style={'display': 'inline-block', 'width': '200px', 
-                               'verticalAlign': 'bottom', "margin-left": "15px"
-                        },
-                    ),
-                ]),
-                dbc.CardBody([
-                    dcc.Checklist(id='node-type-filter',
-                                  options=[{'label': t, 'value': t} for t in
-                                           config["node_tables"]],
-                                  value=config["node_tables"],
-                                  inline=True),
-                    dcc.Dropdown(id='people-filter', multi=True, placeholder='Filter by people or initiative...'),
-                    dbc.Checklist(id='show-deleted', options=[{'label': 'Show deleted', 'value': 'show'}],
-                                  value=[], inline=True, style={'display': 'none'}),
-                    dcc.Slider(id='degree-filter', min=1, max=5, step=1, value=1),
-                    dcc.Checklist(id='node-type-degree-filter',
-                                  options=[{'label': t, 'value': t} for t in
-                                           config["node_tables"]],
-                                  value=config["node_tables"],
-                                  inline=True),
-                    cyto.Cytoscape(id='cyto', elements=[], style={'width': '100%', 'height': '600px'},
-                                   layout=config["network_vis"]["layout"], stylesheet=config["network_vis"]["stylesheet"])
-                ])
-            ])
+            html.Div(id="view-container")
         ], width=8),
 
         dbc.Col([
@@ -131,7 +97,7 @@ def populate_people_filter(_):
     except Exception:
         return []
 
-
+register_view_callbacks(app, config)
 register_form_callbacks(app, config)
 
 
@@ -157,17 +123,6 @@ def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree
         degree_types=degree_types
     )
     return elements or []
-
-
-@app.callback(
-    Output('cyto', 'layout'),
-    Input('layout-selector', 'value')
-)
-def layout_selector(layout_name):
-    layout = config["network_vis"]["layout"].copy()
-    if layout_name is not None:
-        layout["name"] = layout_name
-    return layout
 
 
 # ---------------------------------------------------------

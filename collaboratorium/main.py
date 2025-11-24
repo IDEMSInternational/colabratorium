@@ -57,7 +57,22 @@ app.layout = dbc.Container([
     dbc.Row([
         dbc.Col([
             dbc.Card([
-                dbc.CardHeader('Graph'),
+                dbc.CardHeader([
+                    html.Button('Degree Graph', id='view-degree', n_clicks=0),
+                    html.Button('Ancestor Graph', id='view-anscestor', n_clicks=0),
+                    html.Button('Child Graph', id='view-child', n_clicks=0),
+                    dcc.Dropdown(
+                        id='layout-selector',
+                        options=[
+                            'cose-bilkent', 'klay', 'dagre', 'cola', 'spread', 'cose',
+                            'breadthfirst', 'concentric', 'grid', 'circle', 'random',
+                        ],
+                        placeholder='Layout Algorithm...',
+                        style={'display': 'inline-block', 'width': '200px', 
+                               'verticalAlign': 'bottom', "margin-left": "15px"
+                        },
+                    ),
+                ]),
                 dbc.CardBody([
                     dcc.Checklist(id='node-type-filter',
                                   options=[{'label': t, 'value': t} for t in
@@ -142,6 +157,17 @@ def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree
         degree_types=degree_types
     )
     return elements or []
+
+
+@app.callback(
+    Output('cyto', 'layout'),
+    Input('layout-selector', 'value')
+)
+def layout_selector(layout_name):
+    layout = config["network_vis"]["layout"].copy()
+    if layout_name is not None:
+        layout["name"] = layout_name
+    return layout
 
 
 # ---------------------------------------------------------

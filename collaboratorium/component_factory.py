@@ -170,7 +170,18 @@ def register_tag_blocks(app, forms_config):
                     return state
 
                 input_keys = [i['id']['element'] for i in ctx.inputs_list[0]]
-                input_dict = dict(zip(input_keys, values))
+                flat_input_dict = dict(zip(input_keys, values))
+                input_dict = {}
+                for key, val in flat_input_dict.items():
+                    if '|' in key:
+                        parts = key.split('|')
+                        assert(len(parts)==2)
+                        if parts[0] not in input_dict.keys():
+                            input_dict[parts[0]] = {}
+                        input_dict[parts[0]][parts[1]] = val
+                    else:
+                        input_dict[key] = val
+
                 if input_keys == ['failsafe']:
                     return None
 
@@ -182,13 +193,44 @@ def register_tag_blocks(app, forms_config):
                     )
                     for tag_group in tag_key_values:
                         if tag_group['value'] == input_dict['tag_group_selector']:
+                            input_dict[str(tag_group['value'])] = {}
                             e_cfg = json.loads(tag_group['label'])
                             for key in e_cfg.keys():
-                                input_dict[key] = None
+                                input_dict[str(tag_group['value'])][key] = None
 
-                input_dict.pop('tag_group_selector')
-                return json.dumps(input_dict, indent=2)
+                auto_keep = input_dict.pop('tag_group_selector')
+                new_state = json.loads(state)
+                new_state.update(input_dict)
+
+
+                for key in list(new_state.keys()):
+                    keep=False
+                    if type(new_state[key]) is dict:
+                        for key2 in new_state[key].keys():
+                            if new_state[key][key2] not in [None, '', []]:
+                                keep = True
+                    elif new_state[key] not in [None, '', []]:
+                        keep = True
+                    if key == str(auto_keep):
+                        keep = True
+                    if not keep:
+                        new_state.pop(key)
+
+                return json.dumps(new_state, indent=2)
             
+
+def failsafe_div(label, subform_name, value):
+    return html.Div(
+        [
+            html.Label(label+' FAILSAFE: malformed tag data'),
+            html.Label('delete the string tags out and replace them with tags compatible with the tag groups'),
+            component_for_element(
+                element_config=dict(element_id=label, type='string'),
+                form_name=subform_name,
+                value=value
+            ),            
+        ], style={'backgroundColor': 'red', 'padding': '10px'}
+    )
 
 def generate_tag_block(element_config, form_name, value=None):
     label = element_config.get("label", element_config["element_id"])
@@ -205,17 +247,8 @@ def generate_tag_block(element_config, form_name, value=None):
         
     
     if failsafe:
-        return  html.Div(
-        [
-            html.Label(label+' FAILSAFE: malformed tag data'),
-            html.Label('delete the string tags out and replace them with tags compatible with the tag groups'),
-            component_for_element(
-                element_config=dict(element_id='failsafe', type='string'),
-                form_name=subform_name,
-                value=value
-            ),            
-        ], style={'backgroundColor': 'red', 'padding': '10px'}
-    )
+        return failsafe_div(label, subform_name, value)
+
     
 
     tag_group_names = get_dropdown_options(
@@ -252,18 +285,28 @@ def generate_tag_block(element_config, form_name, value=None):
     for key, tag_value in value.items():
         tag_group = None
         for tg in tag_group_ls:
-            if key in tg['key_values']:
+            if key == str(tg['id']):
+                used_tag_group_idxs.append(tg['id'])
                 tag_group = tg
                 break
-
-        for field, config in tag_group['key_values'].items():
-            if field == key:
-                used_tag_group_idxs.append(tag_group['id'])
-                elements.append(component_for_element(
-                    element_config=dict(element_id=field, **config),
+        tg_elements = []
+        if tag_group is None:
+            tg_elements.append(failsafe_div(key, subform_name, json.dumps(tag_value, indent=2)))
+            tag_group_label = 'failsafe:'+key
+        else:
+            tag_group_label = tag_group['label']
+            for field, config in tag_group['key_values'].items():
+                tg_elements.append(component_for_element(
+                    element_config=dict(element_id=f'{key}|{field}', **config),
                     form_name=subform_name,
-                    value=tag_value
+                    value=tag_value[field]
                 ))
+        elements.append(html.Div(
+            [
+                html.B(tag_group_label),
+                *tg_elements
+            ], style={'border': '1px solid black', 'padding': '10px'}
+        ))
     
     available_tag_groups = [tag_group for tag_group in tag_group_names if tag_group['value'] not in used_tag_group_idxs]
 

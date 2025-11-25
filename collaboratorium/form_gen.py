@@ -4,7 +4,7 @@ from db import db_connect, get_latest_entry
 
 from analytics import analytics_log
 from auth import login_required
-from component_factory import component_for_element
+from component_factory import component_for_element, register_tag_blocks
 
 
 # ==============================================================
@@ -65,6 +65,7 @@ def generate_form_layout(form_name, forms_config, object_id=None):
 def register_form_callbacks(app, config):
     register_click_callbacks(app, config)
     register_submit_callbacks(app, config.get("forms", {}))
+    register_tag_blocks(app, config.get("forms", {}))
 
 def register_click_callbacks(app, config):
     forms_config = config.get("forms", {})
@@ -185,9 +186,20 @@ def register_submit_callbacks(app, forms_config):
     """Register one submit callback per form in the config."""
     for form_name, fc in forms_config.items():
         input_ids = [{"type": "input", "form": form_name, "element": e_id} for e_id in fc["elements"].keys()]
-        state_args = [State(i, ("date" if "date" in i["element"] else "value")) for i in input_ids]
+        value_key_map = {
+            "date": "date",
+            "datetime": "date",
+            "tag": "data",
+        }
         meta_ids = [{"type": "input", "form": form_name, "element": e_id} for e_id in fc["meta"].keys()]
-        state_args += [State(i, ("date" if "date" in i["element"] else "value")) for i in meta_ids]
+        state_args = []
+        for e_id, e_val in (fc["elements"] | fc["meta"]).items():
+            i = {"type": "input", "form": form_name, "element": e_id}
+            try:
+                value_key = value_key_map.get(e_val['type'], "value")
+            except KeyError:
+                value_key = 'value'
+            state_args.append(State(i, value_key))
 
         @app.callback(
             Output("out_msg", "children", allow_duplicate=True),

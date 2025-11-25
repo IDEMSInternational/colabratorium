@@ -307,9 +307,12 @@ forms:
           value_column: id
           label_column: name
       tags:
-        type: text
-        appearance: multiline
+        type: tag
         label: Tags
+        parameters:
+          source_table: tags
+          value_column: id
+          label_column: name
       status:
         type: string
         label: Status
@@ -392,9 +395,12 @@ forms:
         type: boolean
         label: Active
       tags:
-        type: text
-        appearance: multiline
+        type: tag
         label: Tags
+        parameters:
+          source_table: tags
+          value_column: id
+          label_column: name
       status:
         type: string
         label: Status
@@ -457,9 +463,12 @@ forms:
           value_column: id
           label_column: name
       tags:
-        type: text
-        appearance: multiline
+        type: tag
         label: Tags
+        parameters:
+          source_table: tags
+          value_column: id
+          label_column: name
       status:
         type: string
         label: Status
@@ -507,9 +516,12 @@ forms:
         type: datetime
         label: End Date
       tags:
-        type: text
-        appearance: multiline
+        type: tag
         label: Tags
+        parameters:
+          source_table: tags
+          value_column: id
+          label_column: name
       status:
         type: string
         label: Status
@@ -630,9 +642,12 @@ forms:
         type: datetime
         label: End Date
       tags:
-        type: text
-        appearance: multiline
+        type: tag
         label: Tags
+        parameters:
+          source_table: tags
+          value_column: id
+          label_column: name
       status:
         type: string
         label: Status

@@ -81,11 +81,14 @@ def component_for_element(element_config, form_name, value=None):
 
     # --- SELECT SINGLE ---
     elif element_type == "select_one":
-        options = get_dropdown_options(
-            element_config["parameters"]["source_table"],
-            element_config["parameters"]["value_column"],
-            element_config["parameters"]["label_column"],
-        )
+        if 'list_name' in element_config:
+            options = element_config[element_config['list_name']]
+        else:
+            options = get_dropdown_options(
+                element_config["parameters"]["source_table"],
+                element_config["parameters"]["value_column"],
+                element_config["parameters"]["label_column"],
+            )
         return html.Div(
             [
                 html.Label(label),
@@ -245,6 +248,7 @@ def generate_tag_block(element_config, form_name, value=None):
 
 
     elements = []
+    used_tag_group_idxs = []
     for key, tag_value in value.items():
         tag_group = None
         for tg in tag_group_ls:
@@ -253,11 +257,15 @@ def generate_tag_block(element_config, form_name, value=None):
                 break
 
         for field, config in tag_group['key_values'].items():
-            elements.append(component_for_element(
-                element_config=dict(element_id=field, **config),
-                form_name=subform_name,
-                value=tag_value
-            ))
+            if field == key:
+                used_tag_group_idxs.append(tag_group['id'])
+                elements.append(component_for_element(
+                    element_config=dict(element_id=field, **config),
+                    form_name=subform_name,
+                    value=tag_value
+                ))
+    
+    available_tag_groups = [tag_group for tag_group in tag_group_names if tag_group['value'] not in used_tag_group_idxs]
 
     tag_block = html.Div(
         [
@@ -266,7 +274,7 @@ def generate_tag_block(element_config, form_name, value=None):
             html.Label('Add form:'),
             dcc.Dropdown(
                 id={"type": "input", "form": subform_name, "element": 'tag_group_selector'},
-                options=tag_group_names,
+                options=available_tag_groups,
                 placeholder='Add Tag Group to Node',
                 clearable=True,
             ),

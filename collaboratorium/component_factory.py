@@ -199,7 +199,7 @@ def register_tag_blocks(app, forms_config):
                                 input_dict[str(tag_group['value'])][key] = None
 
                 auto_keep = input_dict.pop('tag_group_selector')
-                new_state = json.loads(state)
+                new_state = json.loads(state) if state is not None else {}
                 new_state.update(input_dict)
 
 

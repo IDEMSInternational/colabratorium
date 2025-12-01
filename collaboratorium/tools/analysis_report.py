@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import sqlite3
 import os
+import random
 from datetime import datetime, timedelta
 
 # ==========================================
@@ -77,7 +78,10 @@ def load_data():
 
     # 1. Anonymization Logic
     if not SHOW_REAL_NAMES:
-        df_people['name'] = "User " + df_people['id'].astype(str)
+        nums = list(range(1, len(df_people['name'])+1))
+        random.shuffle(nums)
+
+        df_people['name'] = [f"anon{n}" for n in nums]
 
     # 2. Process Content (Creations vs Edits)
     df_content_all = pd.concat([df_init, df_cont, df_act], ignore_index=True)
@@ -259,6 +263,12 @@ def update_dashboard(start_date, end_date):
     collab_only = sub_analytics[sub_analytics['interaction_type'] == 'Collaboration']
     collab_rate = (len(collab_only) / count_views * 100) if count_views > 0 else 0
 
+    if not SHOW_REAL_NAMES:
+        uids = sub_analytics.groupby(['person_id']).size().reset_index(name='count').sort_values('count', ascending=False)['person_id']
+        new_names = {name: f"anon {i+1}" for i, name in enumerate(uids)}
+        sub_analytics['user_name'] = sub_analytics['person_id'].map(new_names)
+        sub_analytics.sort_values(by='user_name', inplace=True)
+
     # --- Graph 1: Timeline (Multi-line) ---
     # We create a dataframe for the timeline by resampling all 3 datasets
     tl_views = sub_analytics.set_index('timestamp').resample('D').size().reset_index(name='Count')
@@ -316,4 +326,4 @@ def update_dashboard(start_date, end_date):
             f"{count_users}", f"{collab_rate:.1f}%")
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=8051)

@@ -367,12 +367,11 @@ def build_elements_from_db(config,
                 other_parent_table_name = config.fk_map[(child_table, other_fk_col)][0]
                 
                 # Handle self-referencing tables
-                if child_table == 'initiative_initiative_links':
+                if other_fk_col in ['parent_id', 'child_id'] and child_col_name in ['parent_id', 'child_id']:
                     source_col_name, target_col_name = 'parent_id', 'child_id'
-                    source_table_name, target_table_name = 'initiatives', 'initiatives'
                 else:
                     source_col_name, target_col_name = other_fk_col, child_col_name
-                    source_table_name, target_table_name = other_parent_table_name, parent_table
+                source_table_name, target_table_name = other_parent_table_name, parent_table
 
                 df = dataframes.get(child_table)
                 if df is None or df.empty: continue

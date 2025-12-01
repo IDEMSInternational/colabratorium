@@ -510,10 +510,10 @@ forms:
         type: string
         label: Location
       start_date:
-        type: datetime
+        type: date
         label: Start Date
       end_date:
-        type: datetime
+        type: date
         label: End Date
       tags:
         type: tag
@@ -636,10 +636,10 @@ forms:
           value_column: id
           label_column: name
       start_date:
-        type: datetime
+        type: date
         label: Start Date
       end_date:
-        type: datetime
+        type: date
         label: End Date
       tags:
         type: tag

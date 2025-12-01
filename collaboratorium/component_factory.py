@@ -58,7 +58,7 @@ def component_for_element(element_config, form_name, value=None):
                 )
 
     # --- datetime ---
-    elif element_type == "datetime":
+    elif element_type == "date":
         return html.Div(
             [
                 html.Label(label),

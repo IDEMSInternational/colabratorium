@@ -86,11 +86,9 @@ app.layout = dbc.Container([
                     ]),
                     dbc.Row([
                         dbc.Col(html.Label('Degree Filter'), width=2),
-                        dbc.Col(dcc.Slider(id='degree-filter', min=1, max=5, step=1, value=1), width=2),
+                        dbc.Col(dcc.Input(id='degree-filter', type='number', min=1, max=100, step=1, value=1), width=2),
                         dbc.Col(dcc.Dropdown(id='people-filter', multi=True, placeholder='Filter by people or initiative...'),width=6)
                     ], className="g-0"),
-                    
-                    
                     
                     dbc.Checklist(id='show-deleted', options=[{'label': 'Show deleted', 'value': 'show'}],
                                   value=[], inline=True, style={'display': 'none'}),
@@ -105,7 +103,7 @@ app.layout = dbc.Container([
                                     inline=True),
                             width=6
                         ),
-                        dbc.Col(html.Label('Degree Traverse'),width=2),
+                        dbc.Col(html.Label('Traverse Direction'),width=2),
                         dbc.Col(dcc.Checklist(id='degree-inout',
                                     options=['parents', 'children'],
                                     value=['parents', 'children'],

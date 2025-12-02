@@ -97,8 +97,7 @@ def register_auth_callbacks(app):
         if user:
             return html.Div([
                 html.Img(src=user["picture"], style={"height": "40px", "marginRight": "10px"}),
-                html.Span(f"Logged in as {user['name']} ({user['email']})"),
-                html.Br(),
+                html.Span(f"Logged in as {user['name']} ({user['email']})   "),
                 html.A("Logout", href="/logout")
             ])
         else:

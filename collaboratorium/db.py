@@ -221,7 +221,8 @@ def build_elements_from_db(config,
                            node_types: list | None = None,
                            people_selected: list | None = None,
                            degree: int | None = None,
-                           degree_types: list | None = None
+                           degree_types: list | None = None,
+                           degree_inout: list | None = None,
                            ):
     """
     Build Cytoscape-style elements (nodes + edges) dynamically from the config.
@@ -399,7 +400,7 @@ def build_elements_from_db(config,
     
     final_elements = all_elements
     
-    def custom_ego_graph(graph, queue, radius, degree_types):
+    def custom_ego_graph(graph, queue, radius, degree_types, degree_inout):
         visited = set()
         # queue = [(ego_node, 0)]  # (node, distance)
         subgraph_nodes = set()
@@ -414,15 +415,19 @@ def build_elements_from_db(config,
             subgraph_nodes.add(current_node)
 
             if graph.nodes[current_node].get("classes") in degree_types or current_distance == 0:
-                for neighbor in graph.neighbors(current_node):
-                    queue.append((neighbor, current_distance + 1))
+                if 'children' in degree_inout:
+                    for neighbor in graph.successors(current_node):
+                        queue.append((neighbor, current_distance + 1))
+                if 'parents' in degree_inout:
+                    for neighbor in graph.predecessors(current_node):
+                        queue.append((neighbor, current_distance + 1))
 
         return graph.subgraph(subgraph_nodes)
 
 
     if people_selected and degree is not None:
         start_nodes = people_selected
-        G = nx.Graph()
+        G = nx.DiGraph()
         for node in all_nodes:
             G.add_node(node['data']['id'], **node)
         for edge in all_edges:
@@ -432,7 +437,7 @@ def build_elements_from_db(config,
 
         queue = [(node, 0) for node in start_nodes]
 
-        neighbors_graph = custom_ego_graph(G, queue, radius=degree, degree_types=degree_types)
+        neighbors_graph = custom_ego_graph(G, queue, radius=degree, degree_types=degree_types, degree_inout=degree_inout)
         nodes_to_keep.update(neighbors_graph.nodes())
         
         # Filter the elements based on the graph traversal

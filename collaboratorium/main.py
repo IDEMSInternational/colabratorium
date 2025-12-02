@@ -74,20 +74,45 @@ app.layout = dbc.Container([
                     ),
                 ]),
                 dbc.CardBody([
-                    dcc.Checklist(id='node-type-filter',
-                                  options=[{'label': t, 'value': t} for t in
-                                           config["node_tables"]],
-                                  value=config["node_tables"],
-                                  inline=True),
-                    dcc.Dropdown(id='people-filter', multi=True, placeholder='Filter by people or initiative...'),
+                    dbc.Row([
+                        dbc.Col(html.Label('Enabled Node Types'),width=3),
+                        dbc.Col(
+                            dcc.Checklist(id='node-type-filter',
+                                    options=[{'label': t, 'value': t} for t in
+                                            config["node_tables"]],
+                                    value=config["node_tables"],
+                                    inline=True),
+                        ),
+                    ]),
+                    dbc.Row([
+                        dbc.Col(html.Label('Degree Filter'), width=2),
+                        dbc.Col(dcc.Slider(id='degree-filter', min=1, max=5, step=1, value=1), width=2),
+                        dbc.Col(dcc.Dropdown(id='people-filter', multi=True, placeholder='Filter by people or initiative...'),width=6)
+                    ], className="g-0"),
+                    
+                    
+                    
                     dbc.Checklist(id='show-deleted', options=[{'label': 'Show deleted', 'value': 'show'}],
                                   value=[], inline=True, style={'display': 'none'}),
-                    dcc.Slider(id='degree-filter', min=1, max=5, step=1, value=1),
-                    dcc.Checklist(id='node-type-degree-filter',
-                                  options=[{'label': t, 'value': t} for t in
-                                           config["node_tables"]],
-                                  value=config["node_tables"],
-                                  inline=True),
+                    
+                    dbc.Row([
+                        dbc.Col(html.Label('Degree Types'),width=2),
+                        dbc.Col(
+                        dcc.Checklist(id='node-type-degree-filter',
+                                    options=[{'label': t, 'value': t} for t in
+                                            config["node_tables"]],
+                                    value=config["node_tables"],
+                                    inline=True),
+                            width=6
+                        ),
+                        dbc.Col(html.Label('Degree Traverse'),width=2),
+                        dbc.Col(dcc.Checklist(id='degree-inout',
+                                    options=['parents', 'children'],
+                                    value=['parents', 'children'],
+                                    inline=True),
+                            width=2
+                        ),
+                    ]),
                     cyto.Cytoscape(id='cyto', elements=[], style={'width': '100%', 'height': '600px'},
                                    layout=config["network_vis"]["layout"], stylesheet=config["network_vis"]["stylesheet"])
                 ])
@@ -143,8 +168,9 @@ register_form_callbacks(app, config)
     Input('show-deleted', 'value'),
     Input('degree-filter', 'value'),
     Input('node-type-degree-filter', 'value'),
+    Input('degree-inout', 'value'),
 )
-def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree, degree_types):
+def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree, degree_types, degree_inout):
     include_deleted = bool(show_deleted and 'show' in show_deleted)
 
     # Build elements directly from the authoritative DB using the active filters
@@ -154,7 +180,8 @@ def refresh_graph(_loaded, selected_types, people_selected, show_deleted, degree
         node_types=selected_types,
         people_selected=people_selected,
         degree=degree,
-        degree_types=degree_types
+        degree_types=degree_types,
+        degree_inout=degree_inout,
     )
     return elements or []
 

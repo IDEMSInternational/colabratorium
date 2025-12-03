@@ -121,11 +121,15 @@ app.layout = dbc.Container([
             dbc.Card([
                 dbc.CardBody(html.Div([
                     html.Div([
-                        html.H2("Tables"),
-                        dcc.Dropdown(
-                            id="table-selector",
-                            options=[{"label": t, "value": t} for t in config["tables"].keys()],
-                        ),
+                        html.H2("Editor"),
+                        html.Div([
+                            html.Label("Add: "),
+                            dcc.Dropdown(
+                                id="table-selector",
+                                options=[{"label": t, "value": t} for t in config["tables"].keys()],
+                                placeholder="Add new element...", style={"width": "100%"}
+                            ),
+                        ], style={'display': 'flex', 'align-items': 'center'}),
                         html.Div(id="form-container"),
                         html.Div(id="out_msg", children=[]),
                     ], style={"width": "100%", "float": "left"}),

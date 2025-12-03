@@ -5,7 +5,7 @@ node_tables:
 - organisations
 - activities
 - contracts
-- tags
+- tag_groups
 network_vis:
   layout:
     name: cose-bilkent
@@ -54,7 +54,7 @@ network_vis:
       shape: round-rectangle
       text-wrap: wrap
       text-max-width: 60px
-  - selector: .tags
+  - selector: .tag_groups
     style:
       background-color: '#ff6900'
       shape: ellipse
@@ -69,7 +69,7 @@ tables:
       description: string
       responsible_person: integer
       timestamp: timestamp
-      tags: json
+      tag_groups: json
       status: string
       created_by: integer
   people:
@@ -81,7 +81,7 @@ tables:
       email: string
       active: boolean
       timestamp: timestamp
-      tags: json
+      tag_groups: json
       status: string
       created_by: integer
   organisations:
@@ -93,7 +93,7 @@ tables:
       description: string
       location: string
       contact_person: integer
-      tags: json
+      tag_groups: json
       status: string
       created_by: integer
   activities:
@@ -106,7 +106,7 @@ tables:
       location: string
       start_date: timestamp
       end_date: timestamp
-      tags: json
+      tag_groups: json
       status: string
       created_by: integer
   contracts:
@@ -121,7 +121,7 @@ tables:
       responsible_person: integer
       start_date: timestamp
       end_date: timestamp
-      tags: json
+      tag_groups: json
       status: string
       created_by: integer
   activity_activity_links:
@@ -194,7 +194,7 @@ tables:
       person_id: integer
       type: string
       created_by: integer
-  tags:
+  tag_groups:
     fields:
       id: integer
       version: integer
@@ -306,11 +306,11 @@ forms:
           source_table: people
           value_column: id
           label_column: name
-      tags:
-        type: tag
-        label: Tags
+      tag_groups:
+        type: subform
+        label: Tag Groups
         parameters:
-          source_table: tags
+          source_table: tag_groups
           value_column: id
           label_column: name
       status:
@@ -394,11 +394,11 @@ forms:
       active:
         type: boolean
         label: Active
-      tags:
-        type: tag
-        label: Tags
+      tag_groups:
+        type: subform
+        label: Tag Groups
         parameters:
-          source_table: tags
+          source_table: tag_groups
           value_column: id
           label_column: name
       status:
@@ -462,11 +462,11 @@ forms:
           source_table: people
           value_column: id
           label_column: name
-      tags:
-        type: tag
-        label: Tags
+      tag_groups:
+        type: subform
+        label: Tag Groups
         parameters:
-          source_table: tags
+          source_table: tag_groups
           value_column: id
           label_column: name
       status:
@@ -515,11 +515,11 @@ forms:
       end_date:
         type: date
         label: End Date
-      tags:
-        type: tag
-        label: Tags
+      tag_groups:
+        type: subform
+        label: Tag Groups
         parameters:
-          source_table: tags
+          source_table: tag_groups
           value_column: id
           label_column: name
       status:
@@ -641,11 +641,11 @@ forms:
       end_date:
         type: date
         label: End Date
-      tags:
-        type: tag
-        label: Tags
+      tag_groups:
+        type: subform
+        label: Tag Groups
         parameters:
-          source_table: tags
+          source_table: tag_groups
           value_column: id
           label_column: name
       status:
@@ -939,9 +939,9 @@ forms:
         strategy: now
       created_by:
         strategy: current_user
-  tags_form:
-    label: Tags
-    default_table: tags
+  tag_groups_form:
+    label: Tag Groups
+    default_table: tag_groups
     elements:
       name:
         type: string
@@ -991,4 +991,4 @@ default_forms:
   contract_initiative_links: contract_initiative_links_form
   organisation_people_links: organisation_people_links_form
   activity_people_links: activity_people_links_form
-  tags: tags_form
+  tag_groups: tag_groups_form

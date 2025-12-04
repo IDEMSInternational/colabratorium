@@ -503,9 +503,17 @@ forms:
         type: string
         label: Name
       description:
-        type: string
+        type: subform
         label: Description
-        appearance: multiline
+        parameters:
+          '1':
+            description:
+              type: string
+              label: Summary (optional)
+              appearance: multiline
+            attachments:
+              type: string
+              label: Attachments
       location:
         type: string
         label: Location

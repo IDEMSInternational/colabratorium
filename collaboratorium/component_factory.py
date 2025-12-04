@@ -246,17 +246,33 @@ def generate_subform_block(element_config, form_name, value=None):
         value = json.loads(value) if value else {}
     except json.decoder.JSONDecodeError:
         failsafe = True
-    
+
     if type(value) is not dict:
         failsafe = True
-        
-    
-    if failsafe:
-        return failsafe_div(label, subform_name, value)
     
     elements = []
     if is_dynamic_form:
+        if failsafe:
+            return failsafe_div(label, subform_name, value)
         elements = generate_dynamic_subform_elements(element_config, form_name, value)
+    else:
+        if failsafe or value == {}:
+            failsafe_element_found = False if value != {} else True
+            dummy_value = {}
+            for group_id, subform in element_config['parameters'].items():
+                dummy_value[group_id] = {}
+                for key, val in element_config['parameters'][group_id].items():
+                    if val['type'] == 'string' and not failsafe_element_found:
+                        dummy_value[group_id][key] = value
+                        failsafe_element_found = True
+                    else:
+                        dummy_value[group_id][key] = None
+                    
+            if failsafe_element_found:
+                value = dummy_value
+            else:
+                return failsafe_div(label, subform_name, value)
+        elements = generate_static_subform_elements(element_config, form_name, value)
 
     subform_block = html.Div(
         [
@@ -270,6 +286,39 @@ def generate_static_subform_elements(element_config, form_name, value=None):
     label = element_config.get("label", element_config["element_id"])
     subform_name = form_name+'-'+element_config["element_id"]
 
+    subform_ls = [dict(id=id, **val) for id, val in element_config['parameters'].items()]
+
+    elements = []
+    used_subform_idxs = []
+    for key, subform_value in value.items():
+        subform = None
+        for sf in subform_ls:
+            if key == str(sf['id']):
+                used_subform_idxs.append(sf['id'])
+                subform = sf
+                break
+        sf_elements = []
+        if subform is None:
+            sf_elements.append(failsafe_div(key, subform_name, json.dumps(subform_value, indent=2)))
+            subform_label = 'failsafe:'+key
+        else:
+            subform_label = subform.get('label', None)
+            for field, config in subform.items():
+                if type(config) is not dict:
+                    continue
+                sf_elements.append(component_for_element(
+                    element_config=dict(element_id=f'{key}|{field}', **config),
+                    form_name=subform_name,
+                    value=subform_value[field]
+                ))
+        elements.append(html.Div(
+            ([html.B(subform_label)] if subform_label is not None else []) +
+            [
+                *sf_elements
+            ], style={'border': '1px solid black', 'padding': '10px'}
+        ))
+
+    return elements
 
 def generate_dynamic_subform_elements(element_config, form_name, value=None):
     label = element_config.get("label", element_config["element_id"])

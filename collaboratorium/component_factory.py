@@ -124,30 +124,30 @@ def component_for_element(element_config, form_name, value=None):
             ]
         )
 
-    # --- Tag group ---
-    elif element_type == "tag":
-        tag_block = html.Div([
+    # --- Subform ---
+    elif element_type == "subform":
+        subform_block = html.Div([
             html.Div(id={"type": "subform", "form": form_name, "element": element_config["element_id"]}),
             dcc.Store(id={"type": "input", "form": form_name, "element": element_config["element_id"]},
                   data=value)
             ],)
-        return tag_block
+        return subform_block
         
 
     # --- DEFAULT FALLBACK ---
     return html.Div([html.Label(label), html.Div("Unsupported element type")])
 
-def register_tag_blocks(app, forms_config):
-    """Register callbacks per tag in the config."""
+def register_subform_blocks(app, forms_config):
+    """Register callbacks per subform in the config."""
     for form_name, fc in forms_config.items():
         value_key_map = {
             "date": "date",
             "datetime": "date",
-            "tag": "data",
+            "subform": "data",
         }
         state_args = []
         for e_id, e_val in fc["elements"].items():
-            if e_val['type'] != 'tag':
+            if e_val['type'] != 'subform':
                 continue
             element_config = dict(element_id=e_id, **e_val)
             
@@ -156,8 +156,8 @@ def register_tag_blocks(app, forms_config):
                 Output({"type": "subform", "form": form_name, "element": element_config["element_id"]}, "children"),
                 Input({"type": "input", "form": form_name, "element": element_config["element_id"]}, "data"),
             )
-            def call_gen_tag_block(value, _element_config = element_config, _form_name = form_name):
-                return generate_tag_block(_element_config, _form_name, value)
+            def call_gen_subform_block(value, _element_config = element_config, _form_name = form_name):
+                return generate_subform_block(_element_config, _form_name, value)
             
 
             @app.callback(
@@ -165,7 +165,7 @@ def register_tag_blocks(app, forms_config):
                 State({"type": "input", "form": form_name, "element": element_config["element_id"]}, "data"),
                 Input({"type": "input", "form": subform_name, "element": ALL}, "value"),
             )
-            def handle_tag_block(state, values, _element_config = element_config, _form_name = form_name):
+            def handle_subform_block(state, values, _element_config = element_config, _form_name = form_name):
                 if ctx.triggered_id is None:
                     return state
 
@@ -185,21 +185,21 @@ def register_tag_blocks(app, forms_config):
                 if input_keys == ['failsafe']:
                     return None
 
-                if input_dict['tag_group_selector'] is not None:
-                    tag_key_values = get_dropdown_options(
+                if input_dict['subform_selector'] is not None:
+                    subform_key_values = get_dropdown_options(
                         element_config["parameters"]["source_table"],
                         element_config["parameters"]["value_column"],
                         'key_values',
                     )
-                    for tag_group in tag_key_values:
-                        if tag_group['value'] == input_dict['tag_group_selector']:
-                            input_dict[str(tag_group['value'])] = {}
-                            e_cfg = json.loads(tag_group['label'])
+                    for subform in subform_key_values:
+                        if subform['value'] == input_dict['subform_selector']:
+                            input_dict[str(subform['value'])] = {}
+                            e_cfg = json.loads(subform['label'])
                             for key in e_cfg.keys():
-                                input_dict[str(tag_group['value'])][key] = None
+                                input_dict[str(subform['value'])][key] = None
 
-                auto_keep = input_dict.pop('tag_group_selector')
-                new_state = json.loads(state) if state is not None else {}
+                auto_keep = input_dict.pop('subform_selector')
+                new_state = json.loads(state) if state not in [None, ''] else {}
                 new_state.update(input_dict)
 
 
@@ -222,8 +222,8 @@ def register_tag_blocks(app, forms_config):
 def failsafe_div(label, subform_name, value):
     return html.Div(
         [
-            html.Label(label+' FAILSAFE: malformed tag data'),
-            html.Label('delete the string tags out and replace them with tags compatible with the tag groups'),
+            html.Label(label+' FAILSAFE: malformed subform data'),
+            html.Label('delete the string and add relavant subforms to replace the data'),
             component_for_element(
                 element_config=dict(element_id=label, type='string'),
                 form_name=subform_name,
@@ -232,95 +232,165 @@ def failsafe_div(label, subform_name, value):
         ], style={'backgroundColor': 'red', 'padding': '10px'}
     )
 
-def generate_tag_block(element_config, form_name, value=None):
+def generate_subform_block(element_config, form_name, value=None):
     label = element_config.get("label", element_config["element_id"])
     subform_name = form_name+'-'+element_config["element_id"]
+
+    if {"source_table", "value_column", "label_column"}.issubset(set(element_config["parameters"].keys())):
+        is_dynamic_form = True
+    else:
+        is_dynamic_form = False
 
     failsafe = False
     try:
         value = json.loads(value) if value else {}
     except json.decoder.JSONDecodeError:
         failsafe = True
-    
+
     if type(value) is not dict:
         failsafe = True
-        
     
-    if failsafe:
-        return failsafe_div(label, subform_name, value)
+    elements = []
+    if is_dynamic_form:
+        if failsafe:
+            return failsafe_div(label, subform_name, value)
+        elements = generate_dynamic_subform_elements(element_config, form_name, value)
+    else:
+        if failsafe or value == {}:
+            failsafe_element_found = False if value != {} else True
+            dummy_value = {}
+            for group_id, subform in element_config['parameters'].items():
+                dummy_value[group_id] = {}
+                for key, val in element_config['parameters'][group_id].items():
+                    if val['type'] == 'string' and not failsafe_element_found:
+                        dummy_value[group_id][key] = value
+                        failsafe_element_found = True
+                    else:
+                        dummy_value[group_id][key] = None
+                    
+            if failsafe_element_found:
+                value = dummy_value
+            else:
+                return failsafe_div(label, subform_name, value)
+        elements = generate_static_subform_elements(element_config, form_name, value)
 
-    
+    subform_block = html.Div(
+        [
+            html.Label(label+' '),
+            *elements,
+        ], style={'backgroundColor': 'lightblue', 'padding': '10px'}
+    )
+    return subform_block
 
-    tag_group_names = get_dropdown_options(
+def generate_static_subform_elements(element_config, form_name, value=None):
+    label = element_config.get("label", element_config["element_id"])
+    subform_name = form_name+'-'+element_config["element_id"]
+
+    subform_ls = [dict(id=id, **val) for id, val in element_config['parameters'].items()]
+
+    elements = []
+    used_subform_idxs = []
+    for key, subform_value in value.items():
+        subform = None
+        for sf in subform_ls:
+            if key == str(sf['id']):
+                used_subform_idxs.append(sf['id'])
+                subform = sf
+                break
+        sf_elements = []
+        if subform is None:
+            sf_elements.append(failsafe_div(key, subform_name, json.dumps(subform_value, indent=2)))
+            subform_label = 'failsafe:'+key
+        else:
+            subform_label = subform.get('label', None)
+            for field, config in subform.items():
+                if type(config) is not dict:
+                    continue
+                sf_elements.append(component_for_element(
+                    element_config=dict(element_id=f'{key}|{field}', **config),
+                    form_name=subform_name,
+                    value=subform_value[field]
+                ))
+        elements.append(html.Div(
+            ([html.B(subform_label)] if subform_label is not None else []) +
+            [
+                *sf_elements
+            ], style={'border': '1px solid black', 'padding': '10px'}
+        ))
+
+    return elements
+
+def generate_dynamic_subform_elements(element_config, form_name, value=None):
+    label = element_config.get("label", element_config["element_id"])
+    subform_name = form_name+'-'+element_config["element_id"]
+
+    subform_names = get_dropdown_options(
         element_config["parameters"]["source_table"],
         element_config["parameters"]["value_column"],
         element_config["parameters"]["label_column"],
     )
-    tag_key_values = get_dropdown_options(
+    subform_key_values = get_dropdown_options(
         element_config["parameters"]["source_table"],
         element_config["parameters"]["value_column"],
         'key_values',
     )
 
-    if tag_group_names is None or tag_key_values is None:
-        return html.Div([html.Label("No tag groups"),])
+    if subform_names is None or subform_key_values is None:
+        return html.Div([html.Label(f"No subforms found for {element_config['label']}"),])
 
-    tag_group_ls = []
-    for id in set([d['value'] for l in [tag_key_values, tag_group_names] for d in l ]):
-        tag_group = {}
-        tag_group['id'] = id
-        tag_label = [d['label'] for d in tag_group_names if d['value'] == id]
-        if len(tag_label) != 1:
-            print(f"Error in tags, no label for tag group id {id}")
-        tag_group['label'] = tag_label[0]
-        key_values = [d['label'] for d in tag_key_values if d['value'] == id]
+    subform_ls = []
+    for id in set([d['value'] for l in [subform_key_values, subform_names] for d in l ]):
+        subform = {}
+        subform['id'] = id
+        subform_label = [d['label'] for d in subform_names if d['value'] == id]
+        if len(subform_label) != 1:
+            print(f"Error in subform, no label for subform id {id}")
+        subform['label'] = subform_label[0]
+        key_values = [d['label'] for d in subform_key_values if d['value'] == id]
         if len(key_values) != 1:
-            print(f"Error in tags, no key_values for tag group id {id}")
-        tag_group['key_values'] = json.loads(key_values[0])
-        tag_group_ls.append(tag_group)
+            print(f"Error in subform, no key_values for subform id {id}")
+        subform['key_values'] = json.loads(key_values[0])
+        subform_ls.append(subform)
 
 
     elements = []
-    used_tag_group_idxs = []
-    for key, tag_value in value.items():
-        tag_group = None
-        for tg in tag_group_ls:
-            if key == str(tg['id']):
-                used_tag_group_idxs.append(tg['id'])
-                tag_group = tg
+    used_subform_idxs = []
+    for key, subform_value in value.items():
+        subform = None
+        for sf in subform_ls:
+            if key == str(sf['id']):
+                used_subform_idxs.append(sf['id'])
+                subform = sf
                 break
-        tg_elements = []
-        if tag_group is None:
-            tg_elements.append(failsafe_div(key, subform_name, json.dumps(tag_value, indent=2)))
-            tag_group_label = 'failsafe:'+key
+        sf_elements = []
+        if subform is None:
+            sf_elements.append(failsafe_div(key, subform_name, json.dumps(subform_value, indent=2)))
+            subform_label = 'failsafe:'+key
         else:
-            tag_group_label = tag_group['label']
-            for field, config in tag_group['key_values'].items():
-                tg_elements.append(component_for_element(
+            subform_label = subform['label']
+            for field, config in subform['key_values'].items():
+                sf_elements.append(component_for_element(
                     element_config=dict(element_id=f'{key}|{field}', **config),
                     form_name=subform_name,
-                    value=tag_value[field]
+                    value=subform_value[field]
                 ))
         elements.append(html.Div(
             [
-                html.B(tag_group_label),
-                *tg_elements
+                html.B(subform_label),
+                *sf_elements
             ], style={'border': '1px solid black', 'padding': '10px'}
         ))
     
-    available_tag_groups = [tag_group for tag_group in tag_group_names if tag_group['value'] not in used_tag_group_idxs]
+    available_subforms = [subform for subform in subform_names if subform['value'] not in used_subform_idxs]
 
-    tag_block = html.Div(
-        [
-            html.Label(label+' '),
-            *elements,
-            html.Label('Add form:'),
-            dcc.Dropdown(
-                id={"type": "input", "form": subform_name, "element": 'tag_group_selector'},
-                options=available_tag_groups,
-                placeholder='Add Tag Group to Node',
-                clearable=True,
-            ),
-        ], style={'backgroundColor': 'lightblue', 'padding': '10px'}
-    )
-    return tag_block
+    elements += [
+        dcc.Dropdown(
+            id={"type": "input", "form": subform_name, "element": 'subform_selector'},
+            options=available_subforms,
+            placeholder='Add new...',
+            clearable=True,
+        ),
+    ]
+    return elements
+
+

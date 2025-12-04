@@ -4,7 +4,7 @@ from db import db_connect, get_latest_entry
 
 from analytics import analytics_log
 from auth import login_required
-from component_factory import component_for_element, register_tag_blocks
+from component_factory import component_for_element, register_subform_blocks
 
 
 # ==============================================================
@@ -65,7 +65,7 @@ def generate_form_layout(form_name, forms_config, object_id=None):
 def register_form_callbacks(app, config):
     register_click_callbacks(app, config)
     register_submit_callbacks(app, config.get("forms", {}))
-    register_tag_blocks(app, config.get("forms", {}))
+    register_subform_blocks(app, config.get("forms", {}))
 
 def register_click_callbacks(app, config):
     forms_config = config.get("forms", {})
@@ -189,7 +189,7 @@ def register_submit_callbacks(app, forms_config):
         value_key_map = {
             "date": "date",
             "datetime": "date",
-            "tag": "data",
+            "subform": "data",
         }
         meta_ids = [{"type": "input", "form": form_name, "element": e_id} for e_id in fc["meta"].keys()]
         state_args = []
